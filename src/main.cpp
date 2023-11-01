@@ -2,20 +2,29 @@
 #include <nvs_flash.h>
 #include <Preferences.h>
 
-// Define default parameters
-struct Parameters {
-    int param1 = 10;
-    float param2 = 20.5;
+// Define parameter structure
+struct Parameter {
+    int index;
+    String name;
+    int defaultValue;
+    int value;
 };
 
-Parameters params;
+// Define parameters
+Parameter parameters[] = {
+    {0, "param1", 10, 10},
+    {1, "param2", 20, 20}
+};
+
+const int numParameters = 2; // keep synchronized with parameters array
+
 Preferences preferences;
 
 // Function prototypes
 void cliTask(void * parameter);
 void handleInput(String input);
 void handleParameterCommand(String input);
-void setParameter(int index, float value);
+void setParameter(int index, int value);
 void getParameter(int index);
 void storeParametersToNVS();
 void clearNVS();
@@ -35,7 +44,7 @@ void setup() {
     // Load parameters from NVS
     updateParametersFromNVS();
     // Create CLI task
-    xTaskCreate(cliTask, "CLI Task", 10000, NULL, 1, NULL);
+    xTaskCreate(cliTask, "CLI Task", 40000, NULL, 1, NULL);
 }
 
 void cliTask(void * parameter) {
@@ -68,8 +77,9 @@ void handleInput(String input) {
 void handleParameterCommand(String input) {
     if(input == "" || input == "h" || input == "help") {
         // List all parameters
-        Serial.println("0: param1 = " + String(params.param1));
-        Serial.println("1: param2 = " + String(params.param2));
+        for(int i = 0; i < numParameters; i++) {
+            Serial.println(String(parameters[i].index) + ": " + parameters[i].name + " = " + String(parameters[i].value));
+        }
     } else {
         int index = input.toInt();
         int valueIndex = input.indexOf(' ');
@@ -77,7 +87,7 @@ void handleParameterCommand(String input) {
             // Set parameter value
             String valueStr = input.substring(valueIndex + 1);  // Adjusted index
             valueStr.trim();
-            float value = valueStr.toFloat();
+            int value = valueStr.toInt();
             setParameter(index, value);
         } else {
             // Print parameter value
@@ -86,20 +96,19 @@ void handleParameterCommand(String input) {
     }
 }
 
-void setParameter(int index, float value) {
-    if(index == 0) {
-        params.param1 = (int)value;
-    } else if(index == 1) {
-        params.param2 = value;
+void setParameter(int index, int value) {
+    if (index >= 0 && index < numParameters) {
+        parameters[index].value = value;
+        Serial.println("Set " + parameters[index].name + " to " + String(value));
+        storeParametersToNVS();
+    } else {
+        Serial.println("Invalid index");
     }
-    storeParametersToNVS();
 }
 
 void getParameter(int index) {
-    if(index == 0) {
-        Serial.println("0: param1 = " + String(params.param1));
-    } else if(index == 1) {
-        Serial.println("1: param2 = " + String(params.param2));
+    if (index >= 0 && index < numParameters) {
+        Serial.println(String(index) + ": " + parameters[index].name + " = " + String(parameters[index].value));
     } else {
         Serial.println("Invalid index");
     }
@@ -107,8 +116,9 @@ void getParameter(int index) {
 
 void storeParametersToNVS() {
     preferences.begin("storage", false);
-    preferences.putInt("param1", params.param1);
-    preferences.putFloat("param2", params.param2);
+    for (int i = 0; i < numParameters; i++) {
+        preferences.putInt(parameters[i].name.c_str(), parameters[i].value);
+    }
     preferences.end();
 }
 
@@ -116,15 +126,17 @@ void clearNVS() {
     preferences.begin("storage", false);
     preferences.clear();
     preferences.end();
-    params.param1 = 10;
-    params.param2 = 20.5;
+    for(int i = 0; i < numParameters; i++) {
+        parameters[i].value = parameters[i].defaultValue;
+    }
     storeParametersToNVS();
 }
 
 void updateParametersFromNVS() {
     preferences.begin("storage", true);
-    params.param1 = preferences.getInt("param1", 10);
-    params.param2 = preferences.getFloat("param2", 20.5);
+    for (int i = 0; i < numParameters; i++) {
+        parameters[i].value = preferences.getInt(parameters[i].name.c_str(), parameters[i].defaultValue);
+    }
     preferences.end();
 }
 
