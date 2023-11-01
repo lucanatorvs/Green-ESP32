@@ -42,6 +42,8 @@ void handleInput(String input) {
         String paramInput = input.substring(1);
         paramInput.trim();
         handleParameterCommand(paramInput);
+    } else if(input == "info" || input == "task") {
+        handleInfoCommand();
     } else if(input == "s" || input == "speed") {
         handleSpeedCommand();
     } else if(input == "h" || input == "help") {
@@ -49,7 +51,8 @@ void handleInput(String input) {
         Serial.println("Available commands:");
         Serial.println("  echo [text]       - Echoes the text back to the serial output.");
         Serial.println("  p [subcommand]    - Parameter command. Type 'p h' or 'p help' for more information.");
-        Serial.println("  s, speed          - Prints the current speed value.");
+        Serial.println("  s, speed          - Prints the current speed measurmement.");
+        Serial.println("  task, info        - Displays system information.");
         Serial.println("  h, help           - Displays this help message.");
     } else {
         Serial.println("Unknown command");
@@ -58,7 +61,41 @@ void handleInput(String input) {
 
 void handleSpeedCommand() {
     uint32_t currentSpeed = getSpeed();  // Assuming getSpeed() is accessible
-    Serial.println("Current Speed: " + String(currentSpeed) + " Hz");  // Adjust units if necessary
+    Serial.println("Current Speed: " + String(currentSpeed) + " Km/h");  // Adjust units if necessary
+}
+
+void handleInfoCommand() {
+    Serial.println("System Information:");
+    
+    // Display number of tasks
+    UBaseType_t uxTaskCount = uxTaskGetNumberOfTasks();
+    Serial.print("Number of Tasks: ");
+    Serial.println(uxTaskCount);
+
+    // Display free heap size
+    size_t xFreeHeapSize = xPortGetFreeHeapSize();
+    Serial.print("Free Heap Size: ");
+    Serial.println(xFreeHeapSize);
+
+    // Display minimum free heap size
+    size_t xMinimumEverFreeHeapSize = xPortGetMinimumEverFreeHeapSize();
+    Serial.print("Minimum Ever Free Heap Size: ");
+    Serial.println(xMinimumEverFreeHeapSize);
+
+    // Display uptime
+    uint32_t uptime = millis() / 1000;
+    Serial.print("Uptime: ");
+    Serial.print(uptime / 86400);
+    Serial.print("d ");
+    uptime %= 86400;  // Get remaining seconds after days
+    if(uptime / 3600 < 10) Serial.print("0");
+    Serial.print(uptime / 3600);
+    Serial.print(":");
+    if((uptime % 3600) / 60 < 10) Serial.print("0");
+    Serial.print((uptime % 3600) / 60);
+    Serial.print(":");
+    if(uptime % 60 < 10) Serial.print("0");
+    Serial.println(uptime % 60);
 }
 
 void handleParameterCommand(String input) {

@@ -22,11 +22,11 @@ void displayTask(void * parameter) {
         if (xSemaphoreTake(display_semaphore, (TickType_t)10) == pdTRUE) {
             display.clearBuffer();
             
-            display.setFont(u8g2_font_5x7_tf);
+            display.setFont(u8g2_font_04b_03_tr);
             
             for (int i = 0; i < numParameters; i++) {
                 String paramStr = String(parameters[i].name) + ": " + String(parameters[i].value);
-                display.drawStr(0, i * 16 + 16, paramStr.c_str());
+                display.drawStr(0, (i + 1) * 8, paramStr.c_str());
             }
             
             display.sendBuffer();

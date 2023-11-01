@@ -15,5 +15,6 @@ void handleInput(String input);
 // CLI commands
 void handleParameterCommand(String input);
 void handleSpeedCommand();
+void handleInfoCommand();
 
 #endif // CLI_H
