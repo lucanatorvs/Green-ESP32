@@ -5,11 +5,12 @@
 Preferences preferences;
 
 Parameter parameters[] = {
-    {0, "param1", 10, 10},
-    {1, "param2", 20, 20}
+    // index, name, defaultValue, value
+    {0, "Odometer_Count", 199000, 199000},
+    {1, "blinkSpeed", 500, 500}
 };
 
-const int numParameters = 2;
+const int numParameters = sizeof(parameters) / sizeof(parameters[0]);
 
 void initializeParameter() {
     // Initialize NVS
@@ -50,22 +51,41 @@ void storeParametersToNVS() {
     preferences.end();
 }
 
-void clearNVS() {
+void clearNVS(int index) {
     preferences.begin("storage", false);
-    preferences.clear();
-    preferences.end();
-    for(int i = 0; i < numParameters; i++) {
-        parameters[i].value = parameters[i].defaultValue;
+    if (index == -1) {
+        // Clear all parameters
+        preferences.clear();
+        for(int i = 0; i < numParameters; i++) {
+            parameters[i].value = parameters[i].defaultValue;
+        }
+        Serial.println("NVS cleared, default values restored");
+    } else if (index >= 0 && index < numParameters) {
+        // Clear specified parameter
+        preferences.remove(parameters[index].name.c_str());
+        parameters[index].value = parameters[index].defaultValue;
+        Serial.println("Parameter " + String(index) + " (" + parameters[index].name + ") cleared, default value restored");
+    } else {
+        Serial.println("Error: Invalid index");
     }
+    preferences.end();
     storeParametersToNVS();
-    Serial.println("NVS cleared, default values restored");
 }
 
-void updateParametersFromNVS() {
+void updateParametersFromNVS(int index) {
     preferences.begin("storage", true);
-    for (int i = 0; i < numParameters; i++) {
-        parameters[i].value = preferences.getInt(parameters[i].name.c_str(), parameters[i].defaultValue);
+    if (index == -1) {
+        // Update all parameters
+        for (int i = 0; i < numParameters; i++) {
+            parameters[i].value = preferences.getInt(parameters[i].name.c_str(), parameters[i].defaultValue);
+        }
+        Serial.println("Parameters updated from NVS");
+    } else if (index >= 0 && index < numParameters) {
+        // Update specified parameter
+        parameters[index].value = preferences.getInt(parameters[index].name.c_str(), parameters[index].defaultValue);
+        Serial.println("Parameter " + String(index) + " (" + parameters[index].name + ") updated from NVS");
+    } else {
+        Serial.println("Error: Invalid index");
     }
     preferences.end();
-    Serial.println("Parameters updated from NVS");
 }

@@ -17,7 +17,7 @@ void initializeParameter();
 void setParameter(int index, int value);
 void getParameter(int index);
 void storeParametersToNVS();
-void clearNVS();
-void updateParametersFromNVS();
+void clearNVS(int index = -1);
+void updateParametersFromNVS(int index = -1);
 
 #endif // PARAMETER_H

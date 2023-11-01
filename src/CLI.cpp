@@ -41,32 +41,81 @@ void handleInput(String input) {
         String paramInput = input.substring(1);
         paramInput.trim();
         handleParameterCommand(paramInput);
-    } else if(input == "clear") {
-        clearNVS();
-    } else if(input == "update") {
-        updateParametersFromNVS();
+    } else if(input == "h" || input == "help") {
+        // Print help message for all commands
+        Serial.println("Available commands:");
+        Serial.println("  echo [text]       - Echoes the text back to the serial output.");
+        Serial.println("  p [subcommand]    - Parameter command. Type 'p h' or 'p help' for more information.");
+        Serial.println("  h, help           - Displays this help message.");
     } else {
         Serial.println("Unknown command");
     }
 }
 
+
 void handleParameterCommand(String input) {
-    if(input == "" || input == "h" || input == "help") {
+    if(input == "h" || input == "help") {
+        // Print help message
+        Serial.println("Usage: p [index] [value] | p update [index] | p clear [index]");
+        Serial.println("  index: parameter index");
+        Serial.println("  value: new value for parameter");
+        Serial.println("  p update: update parameters from NVS");
+        Serial.println("  p clear: clear NVS and reset parameters to default");
+    } else if(input.startsWith("clear")) {
+        String indexStr = input.substring(6);
+        indexStr.trim();
+        if (indexStr.length() > 0) {
+            if (!indexStr.toInt() && indexStr != "0") {
+                Serial.println("Error: Invalid index");
+                return;
+            }
+            clearNVS(indexStr.toInt());
+        } else {
+            clearNVS();
+        }
+    } else if(input.startsWith("update")) {
+        String indexStr = input.substring(7);
+        indexStr.trim();
+        if (indexStr.length() > 0) {
+            if (!indexStr.toInt() && indexStr != "0") {
+                Serial.println("Error: Invalid index");
+                return;
+            }
+            updateParametersFromNVS(indexStr.toInt());
+        } else {
+            updateParametersFromNVS();
+        }
+    } else if(input == "") {
         // List all parameters
         for(int i = 0; i < numParameters; i++) {
             Serial.println(String(parameters[i].index) + ": " + parameters[i].name + " = " + String(parameters[i].value));
         }
     } else {
-        int index = input.toInt();
         int valueIndex = input.indexOf(' ');
         if(valueIndex != -1) {
-            // Set parameter value
-            String valueStr = input.substring(valueIndex + 1);  // Adjusted index
+            String indexStr = input.substring(0, valueIndex);
+            String valueStr = input.substring(valueIndex + 1);
+            indexStr.trim();
             valueStr.trim();
+            // Check for invalid input
+            if (!indexStr.toInt() && indexStr != "0") {
+                Serial.println("Error: Invalid index");
+                return;
+            }
+            if (!valueStr.toInt() && valueStr != "0") {
+                Serial.println("Error: Invalid value");
+                return;
+            }
+            int index = indexStr.toInt();
             int value = valueStr.toInt();
             setParameter(index, value);
         } else {
-            // Print parameter value
+            // Check for invalid index
+            if (!input.toInt() && input != "0") {
+                Serial.println("Error: Invalid index");
+                return;
+            }
+            int index = input.toInt();
             getParameter(index);
         }
     }
