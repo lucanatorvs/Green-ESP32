@@ -2,11 +2,13 @@
 #include "CLI.h"
 #include "Parameter.h"
 #include "BlinkTask.h"
+#include "DisplayTask.h"
 
 void setup() {
-    initializeCLI();
+    initializeCLI();            // priority 2
     initializeParameter();
-    initializeBlinkTask();
+    initializeBlinkTask();      // priority 0
+    initializeDisplayTask();    // priority 1
 }
 
 void loop() {

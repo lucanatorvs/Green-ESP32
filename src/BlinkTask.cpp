@@ -3,6 +3,10 @@
 
 const int ledPin = LED_BUILTIN;
 
+void initializeBlinkTask() {
+    xTaskCreate(blinkTask, "Blink Task", 1024, NULL, 0, NULL);
+}
+
 void blinkTask(void * parameter) {
     pinMode(ledPin, OUTPUT);
     for (;;) {
@@ -12,8 +16,4 @@ void blinkTask(void * parameter) {
         digitalWrite(ledPin, LOW);
         vTaskDelay(blinkDelay / portTICK_PERIOD_MS);
     }
-}
-
-void initializeBlinkTask() {
-    xTaskCreate(blinkTask, "Blink Task", 1024, NULL, 0, NULL);
 }

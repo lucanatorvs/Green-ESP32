@@ -13,7 +13,10 @@ struct Parameter {
 extern Parameter parameters[];
 extern const int numParameters;
 
+// Initialize parameters
 void initializeParameter();
+
+// Parameter functions
 void setParameter(int index, int value);
 void getParameter(int index);
 void storeParametersToNVS();
