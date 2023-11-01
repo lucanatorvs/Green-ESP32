@@ -12,8 +12,9 @@ struct Parameter {
 
 // Define parameters
 Parameter parameters[] = {
-    {0, "param1", 10, 10},
-    {1, "param2", 20, 20}
+    // index, name, defaultValue, value
+    {0, "param1", 10, 10}, // Placeholder perimeter
+    {1, "param2", 20, 20}  // Placeholder perimeter
 };
 
 const int numParameters = 2; // keep synchronized with parameters array
@@ -48,11 +49,26 @@ void setup() {
 }
 
 void cliTask(void * parameter) {
+    String input;
     for (;;) {
-        if(Serial.available() > 0) {
-            String input = Serial.readStringUntil('\n');
-            input.trim();  // Remove any trailing whitespace
-            handleInput(input);
+        if (Serial.available() > 0) {
+            char ch = Serial.read();
+            if (ch == '\b' || ch == 127) {  // ASCII for backspace or delete
+                if (input.length() > 0) {
+                    input.remove(input.length() - 1);  // Remove last character from input
+                    Serial.write(127);  // Send DEL character
+                }
+            } else if (ch == '\n' || ch == '\r') {  // New line or carriage return
+                Serial.println();  // Echo new line back to user immediately
+                if (input.length() > 0) {  // Only process non-empty commands
+                    input.trim();
+                    handleInput(input);
+                    input = "";  // Reset input string for next command
+                }
+            } else {
+                input += ch;  // Accumulate characters into input string
+                Serial.print(ch);  // Echo character back to user
+            }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
