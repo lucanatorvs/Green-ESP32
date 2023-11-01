@@ -6,8 +6,10 @@ Preferences preferences;
 
 Parameter parameters[] = {
     // index, name, defaultValue, value
-    {0, "Odometer_Count", 199000, 199000},
-    {1, "blinkSpeed", 500, 500}
+    {0, "OdometerCount", 199000, 199000},   // Kilometers
+    {1, "BlinkSpeed", 500, 500},            // Milliseconds
+    {2, "PulseDelay", 100, 100},            // Milliseconds
+    {3, "SpeedFactor", 400, 400}            // conversion factor from pulses per second to kilometers per hour
 };
 
 const int numParameters = sizeof(parameters) / sizeof(parameters[0]);

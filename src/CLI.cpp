@@ -1,5 +1,6 @@
 #include "CLI.h"
 #include "Parameter.h"
+#include "PulseCounterTask.h"
 
 void initializeCLI() {
     // Initialize Serial communication
@@ -41,17 +42,24 @@ void handleInput(String input) {
         String paramInput = input.substring(1);
         paramInput.trim();
         handleParameterCommand(paramInput);
+    } else if(input == "s" || input == "speed") {
+        handleSpeedCommand();
     } else if(input == "h" || input == "help") {
         // Print help message for all commands
         Serial.println("Available commands:");
         Serial.println("  echo [text]       - Echoes the text back to the serial output.");
         Serial.println("  p [subcommand]    - Parameter command. Type 'p h' or 'p help' for more information.");
+        Serial.println("  s, speed          - Prints the current speed value.");
         Serial.println("  h, help           - Displays this help message.");
     } else {
         Serial.println("Unknown command");
     }
 }
 
+void handleSpeedCommand() {
+    uint32_t currentSpeed = getSpeed();  // Assuming getSpeed() is accessible
+    Serial.println("Current Speed: " + String(currentSpeed) + " Hz");  // Adjust units if necessary
+}
 
 void handleParameterCommand(String input) {
     if(input == "h" || input == "help") {
