@@ -9,7 +9,7 @@ Parameter parameters[] = {
     {0, "OdometerCount", 199000, 199000},   // Kilometers
     {1, "BlinkSpeed", 500, 500},            // Milliseconds
     {2, "PulseDelay", 100, 100},            // Milliseconds
-    {3, "SpeedFactor", 400, 400}            // mm per pulse
+    {3, "SpeedFactor", 800, 800}            // mm per pulse
 };
 
 const int numParameters = sizeof(parameters) / sizeof(parameters[0]);

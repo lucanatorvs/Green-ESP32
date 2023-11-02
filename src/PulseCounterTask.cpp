@@ -28,6 +28,7 @@ pcnt_config_t pcnt_config = {
 };
 
 void calculate_speed_task(void *pvParameters);
+void checkAndIncrementOdometer();
 
 void initializePulseCounterTask() {
     pcnt_unit_config(&pcnt_config);
@@ -40,18 +41,20 @@ void initializePulseCounterTask() {
 void calculate_speed_task(void *pvParameters) {
     for (;;) {
         int PulseDelay = parameters[2].value;
+        int PulseDistance = parameters[3].value; // Distance in mm per pulse
         int16_t count;
         pcnt_get_counter_value(PULSE_COUNTER_UNIT, &count);
-        uint32_t local_frequency = count * 1000 / PulseDelay;
-        frequency_buffer[frequency_buffer_index] = local_frequency;
-        frequency_buffer_index = (frequency_buffer_index + 1) % SAMPLE_SIZE;  // Make sure index stays within buffer size
 
-        uint32_t total_frequency = 0;
-        for (int i = 0; i < SAMPLE_SIZE; i++) {
-            total_frequency += frequency_buffer[i];
-        }
-        speed = total_frequency / SAMPLE_SIZE;  // Average frequency over the last SAMPLE_SIZE samples
-        
+        accumulated_distance += count * PulseDistance;
+
+        checkAndIncrementOdometer();
+
+        // I could optimise this by precmputing the speed factor and using that instead of the division.
+        // At the cost of being able to change the speed factor (PulseDelay) at runtime
+        uint32_t local = count * PulseDistance; // distance in mm
+        local = local * 1000 / PulseDelay; // speed in mm/s
+        speed = local * 36 / 100000; // speed in km/h
+
         pcnt_counter_clear(PULSE_COUNTER_UNIT);
         vTaskDelay(PulseDelay / portTICK_PERIOD_MS);
     }
@@ -59,4 +62,14 @@ void calculate_speed_task(void *pvParameters) {
 
 uint32_t getSpeed() {
     return speed;
+}
+
+void checkAndIncrementOdometer() {
+    if (accumulated_distance >= 1000000) {
+        int OdometerCount = parameters[0].value;
+        OdometerCount += 1;
+        parameters[0].value = OdometerCount;
+        storeParametersToNVS(0);
+        accumulated_distance -= 1000000;
+    }
 }
