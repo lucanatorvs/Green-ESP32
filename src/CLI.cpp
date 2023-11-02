@@ -42,7 +42,7 @@ void handleInput(String input) {
         String paramInput = input.substring(1);
         paramInput.trim();
         handleParameterCommand(paramInput);
-    } else if(input == "info" || input == "task") {
+    } else if(input == "info" || input == "task" || input == "sys") {
         handleInfoCommand();
     } else if(input == "s" || input == "speed") {
         handleSpeedCommand();
@@ -52,7 +52,7 @@ void handleInput(String input) {
         Serial.println("  echo [text]       - Echoes the text back to the serial output.");
         Serial.println("  p [subcommand]    - Parameter command. Type 'p h' or 'p help' for more information.");
         Serial.println("  s, speed          - Prints the current speed measurmement.");
-        Serial.println("  task, info        - Displays system information.");
+        Serial.println("  task, info, sys   - Displays system information.");
         Serial.println("  h, help           - Displays this help message.");
     } else {
         Serial.println("Unknown command");
