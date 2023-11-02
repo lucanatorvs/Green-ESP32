@@ -6,7 +6,4 @@
 // Initialize blink task
 void initializeBlinkTask();
 
-// Blink task function
-void blinkTask(void * parameter);
-
 #endif // BLINK_TASK_H

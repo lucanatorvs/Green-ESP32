@@ -5,6 +5,8 @@
 U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI display(U8G2_R2, DISPLAY_CHIP_SELECT_PIN, DISPLAY_DATA_COMMAND_PIN, DISPLAY_RESET_PIN);
 SemaphoreHandle_t display_semaphore;
 
+void displayTask(void * parameter);
+
 void initializeDisplayTask() {
     display.begin();
     display.enableUTF8Print();

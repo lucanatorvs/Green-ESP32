@@ -2,10 +2,15 @@
 #include "Parameter.h"
 #include "PulseCounterTask.h"
 
+void cliTask(void * parameter);
+void handleInput(String input);
+void handleParameterCommand(String input);
+void handleSpeedCommand();
+void handleInfoCommand();
+
 void initializeCLI() {
-    // Initialize Serial communication
     Serial.begin(115200);
-    // Create CLI task
+
     xTaskCreate(cliTask, "CLI Task", 2048, NULL, 2, NULL);
 }
 

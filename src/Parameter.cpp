@@ -5,11 +5,11 @@
 Preferences preferences;
 
 Parameter parameters[] = {
-    // index, name, defaultValue, value
+    // index, name, defaultValue, value     // unit
     {0, "OdometerCount", 199000, 199000},   // Kilometers
     {1, "BlinkSpeed", 500, 500},            // Milliseconds
     {2, "PulseDelay", 100, 100},            // Milliseconds
-    {3, "SpeedFactor", 400, 400}            // conversion factor from pulses per second to kilometers per hour
+    {3, "SpeedFactor", 400, 400}            // mm per pulse
 };
 
 const int numParameters = sizeof(parameters) / sizeof(parameters[0]);
@@ -45,10 +45,19 @@ void getParameter(int index) {
     }
 }
 
-void storeParametersToNVS() {
+void storeParametersToNVS(int index) {
     preferences.begin("storage", false);
-    for (int i = 0; i < numParameters; i++) {
-        preferences.putInt(parameters[i].name.c_str(), parameters[i].value);
+    if (index == -1) {
+        // Default case: save all parameters
+        for (int i = 0; i < numParameters; i++) {
+            preferences.putInt(parameters[i].name.c_str(), parameters[i].value);
+        }
+    } else if (index >= 0 && index < numParameters) {
+        // Specific parameter case: save specified parameter
+        preferences.putInt(parameters[index].name.c_str(), parameters[index].value);
+    } else {
+        // Error case: invalid index
+        Serial.println("Error: Invalid index");
     }
     preferences.end();
 }

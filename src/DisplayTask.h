@@ -8,7 +8,4 @@
 // Initialize display task
 void initializeDisplayTask();
 
-// Display task function
-void displayTask(void * parameter);
-
-#endif
+#endif // DisplayTask_h

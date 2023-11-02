@@ -6,15 +6,4 @@
 // Initialize CLI
 void initializeCLI();
 
-// CLI task function
-void cliTask(void * parameter);
-
-// Handle input
-void handleInput(String input);
-
-// CLI commands
-void handleParameterCommand(String input);
-void handleSpeedCommand();
-void handleInfoCommand();
-
 #endif // CLI_H

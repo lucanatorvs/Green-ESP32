@@ -19,7 +19,7 @@ void initializeParameter();
 // Parameter functions
 void setParameter(int index, int value);
 void getParameter(int index);
-void storeParametersToNVS();
+void storeParametersToNVS(int index = -1);
 void clearNVS(int index = -1);
 void updateParametersFromNVS(int index = -1);
 
