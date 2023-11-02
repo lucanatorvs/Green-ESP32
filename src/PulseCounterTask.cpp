@@ -1,8 +1,9 @@
 #include "PulseCounterTask.h"
 #include "Parameter.h"
+#include "PinAssignments.h"
 #include <driver/pcnt.h>
 
-#define PULSE_INPUT_PIN 26
+
 #define PULSE_COUNTER_UNIT PCNT_UNIT_0
 #define PCNT_H_LIM_VAL 10000
 #define PULSEFILTER 34464

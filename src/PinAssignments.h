@@ -1,0 +1,11 @@
+// PinAssignments.h
+#ifndef PIN_ASSIGNMENTS_H
+#define PIN_ASSIGNMENTS_H
+
+#define DISPLAY_CHIP_SELECT_PIN 21
+#define DISPLAY_DATA_COMMAND_PIN 17
+#define DISPLAY_RESET_PIN 16
+
+#define PULSE_INPUT_PIN 26
+
+#endif // PIN_ASSIGNMENTS_H
