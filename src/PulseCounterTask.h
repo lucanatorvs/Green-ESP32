@@ -9,4 +9,9 @@ void initializePulseCounterTask();
 // Function to get the speed value
 uint32_t getSpeed();
 
+// Function for the trip odometer
+uint32_t getTripOdometer();
+void setTripOdometer(uint32_t value);
+void resetTripOdometer();
+
 #endif  // PULSE_COUNTER_TASK_H

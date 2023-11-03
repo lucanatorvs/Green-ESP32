@@ -7,6 +7,7 @@ void handleInput(String input);
 void handleParameterCommand(String input);
 void handleSpeedCommand();
 void handleInfoCommand();
+void handleTripCommand(String input);
 
 void initializeCLI() {
     Serial.begin(115200);
@@ -41,17 +42,21 @@ void cliTask(void * parameter) {
 }
 
 void handleInput(String input) {
-    if(input.startsWith("echo ")) {
+    if (input.startsWith("echo ")) {
         Serial.println(input.substring(5));
-    } else if(input.startsWith("p")) {
+    } else if (input.startsWith("p")) {
         String paramInput = input.substring(1);
         paramInput.trim();
         handleParameterCommand(paramInput);
-    } else if(input == "info" || input == "task" || input == "sys") {
+    } else if (input == "info" || input == "task" || input == "sys") {
         handleInfoCommand();
-    } else if(input == "s" || input == "speed") {
+    } else if (input == "s" || input == "speed") {
         handleSpeedCommand();
-    } else if(input == "h" || input == "help") {
+    } else if (input.startsWith("trip")) {
+        String tripInput = input.substring(4);
+        tripInput.trim();
+        handleTripCommand(tripInput);
+    } else if (input == "h" || input == "help") {
         // Print help message for all commands
         Serial.println("Available commands:");
         Serial.println("  echo [text]       - Echoes the text back to the serial output.");
@@ -59,6 +64,7 @@ void handleInput(String input) {
         Serial.println("  s, speed          - Prints the current speed measurmement.");
         Serial.println("  task, info, sys   - Displays system information.");
         Serial.println("  h, help           - Displays this help message.");
+        Serial.println("  trip              - Trip odometer command. Type 'trip h' or 'trip help' for more information.");
     } else {
         Serial.println("Unknown command");
     }
@@ -93,25 +99,25 @@ void handleInfoCommand() {
     Serial.print(uptime / 86400);
     Serial.print("d ");
     uptime %= 86400;  // Get remaining seconds after days
-    if(uptime / 3600 < 10) Serial.print("0");
+    if (uptime / 3600 < 10) Serial.print("0");
     Serial.print(uptime / 3600);
     Serial.print(":");
-    if((uptime % 3600) / 60 < 10) Serial.print("0");
+    if ((uptime % 3600) / 60 < 10) Serial.print("0");
     Serial.print((uptime % 3600) / 60);
     Serial.print(":");
-    if(uptime % 60 < 10) Serial.print("0");
+    if (uptime % 60 < 10) Serial.print("0");
     Serial.println(uptime % 60);
 }
 
 void handleParameterCommand(String input) {
-    if(input == "h" || input == "help") {
+    if (input == "h" || input == "help") {
         // Print help message
         Serial.println("Usage: p [index] [value] | p update [index] | p clear [index]");
         Serial.println("  index: parameter index");
         Serial.println("  value: new value for parameter");
         Serial.println("  p update: update parameters from NVS");
         Serial.println("  p clear: clear NVS and reset parameters to default");
-    } else if(input.startsWith("clear")) {
+    } else if (input.startsWith("clear")) {
         String indexStr = input.substring(6);
         indexStr.trim();
         if (indexStr.length() > 0) {
@@ -123,7 +129,7 @@ void handleParameterCommand(String input) {
         } else {
             clearNVS();
         }
-    } else if(input.startsWith("update")) {
+    } else if (input.startsWith("update")) {
         String indexStr = input.substring(7);
         indexStr.trim();
         if (indexStr.length() > 0) {
@@ -135,14 +141,14 @@ void handleParameterCommand(String input) {
         } else {
             updateParametersFromNVS();
         }
-    } else if(input == "") {
+    } else if (input == "") {
         // List all parameters
         for(int i = 0; i < numParameters; i++) {
             Serial.println(String(parameters[i].index) + ": " + parameters[i].name + " = " + String(parameters[i].value));
         }
     } else {
         int valueIndex = input.indexOf(' ');
-        if(valueIndex != -1) {
+        if (valueIndex != -1) {
             String indexStr = input.substring(0, valueIndex);
             String valueStr = input.substring(valueIndex + 1);
             indexStr.trim();
@@ -168,5 +174,41 @@ void handleParameterCommand(String input) {
             int index = input.toInt();
             getParameter(index);
         }
+    }
+}
+
+void handleTripCommand(String input) {
+    if (input == "h" || input == "help") {
+        // Print help message, no subcommand just prints trip odometer
+        Serial.println("Usage: trip [subcommand]");
+        Serial.println("  subcommand: r, reset");
+        Serial.println("  subcommand: s, set [value] km");
+        Serial.println("  subcommand: h, help");
+    } else if (input.startsWith("r") || input.startsWith("reset")) {
+        resetTripOdometer();
+    } else if (input.startsWith("s") || input.startsWith("set")) {
+        if (input.startsWith("set")) {
+            input = input.substring(3);
+        } else {
+            input = input.substring(1);
+        }
+        String valueStr = input;
+        valueStr.trim();
+        if (valueStr.length() > 0) {
+            if (!valueStr.toInt() && valueStr != "0") {
+                Serial.println("Error: Invalid value");
+                return;
+            }
+            setTripOdometer(valueStr.toInt() * 10);
+        } else {
+            Serial.println("Error: No value specified");
+        }
+    } else if (input == "") {
+        char buffer[11];  // Buffer to hold formatted strings
+        uint32_t tripOdometer = getTripOdometer();
+        sprintf(buffer, "%03d.%d km", tripOdometer / 10, tripOdometer % 10);
+        Serial.println(buffer);
+    } else {
+        Serial.println("Error: Invalid subcommand");
     }
 }

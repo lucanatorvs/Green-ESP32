@@ -13,6 +13,7 @@ volatile uint32_t frequency_buffer[SAMPLE_SIZE] = {0};
 volatile int frequency_buffer_index = 0;
 volatile uint32_t speed = 0;
 volatile uint32_t accumulated_distance = 0;
+volatile uint32_t trip_distance = 0;
 
 pcnt_config_t pcnt_config = {
     .pulse_gpio_num = PULSE_INPUT_PIN,
@@ -29,6 +30,7 @@ pcnt_config_t pcnt_config = {
 
 void calculate_speed_task(void *pvParameters);
 void checkAndIncrementOdometer();
+void checkAndResetTripOdometer();
 
 void initializePulseCounterTask() {
     pcnt_unit_config(&pcnt_config);
@@ -45,14 +47,14 @@ void calculate_speed_task(void *pvParameters) {
         int16_t count;
         pcnt_get_counter_value(PULSE_COUNTER_UNIT, &count);
 
-        accumulated_distance += count * PulseDistance;
+        uint32_t distance = count * PulseDistance; // distance in mm
+        accumulated_distance += distance;
+        trip_distance += distance;
 
         checkAndIncrementOdometer();
+        checkAndResetTripOdometer();
 
-        // I could optimise this by precmputing the speed factor and using that instead of the division.
-        // At the cost of being able to change the speed factor (PulseDelay) at runtime
-        uint32_t local = count * PulseDistance; // distance in mm
-        local = local * 1000 / PulseDelay; // speed in mm/s
+        uint32_t local = distance * 1000 / PulseDelay; // speed in mm/s
         speed = local * 36 / 100000; // speed in km/h
 
         pcnt_counter_clear(PULSE_COUNTER_UNIT);
@@ -72,4 +74,22 @@ void checkAndIncrementOdometer() {
         storeParametersToNVS(0);
         accumulated_distance -= 1000000;
     }
+}
+
+void checkAndResetTripOdometer() {
+    if (trip_distance >= 1000000000) { // 1000000000 mm = 100000 m = 100 km
+        trip_distance -= 1000000000;
+    }
+}
+
+uint32_t getTripOdometer() {
+    return trip_distance / 100000; // convert mm to 100 m
+}
+
+void resetTripOdometer() {
+    trip_distance = 0;
+}
+
+void setTripOdometer(uint32_t value) {
+    trip_distance = value * 100000; // convert 100 m to mm
 }
