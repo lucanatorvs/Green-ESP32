@@ -75,7 +75,7 @@ void clearNVS(int index) {
         // Clear specified parameter
         preferences.remove(parameters[index].name.c_str());
         parameters[index].value = parameters[index].defaultValue;
-        Serial.println("Parameter " + String(index) + " (" + parameters[index].name + ") cleared, default value restored");
+        Serial.println("Parameter " + String(index) + " (" + parameters[index].name + ") cleared, default value (" + String(parameters[index].defaultValue) + ") restored"); 
     } else {
         Serial.println("Error: Invalid index");
     }

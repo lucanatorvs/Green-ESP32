@@ -28,17 +28,12 @@ void displayTask(void * parameter) {
         if (xSemaphoreTake(display_semaphore, (TickType_t)10) == pdTRUE) {
             display.clearBuffer();
 
-            // display.setFont(u8g2_font_6x10_tf);
-
-            // for (int i = 0; i < numParameters; i++) {
-            //     String paramStr = String(parameters[i].name) + ": " + String(parameters[i].value);
-            //     display.drawStr(0, (i + 1) * 8, paramStr.c_str());
-            // }
-
-            // draw a frame from xy1 to xy2, just outside the visible area
+            // draw a frame from xy1 to xy2, just outside the visible area, use this to position the display
             display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
 
             drawOdometer();
+
+            
 
             display.sendBuffer();
 
