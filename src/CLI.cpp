@@ -56,6 +56,8 @@ void handleInput(String input) {
         String tripInput = input.substring(4);
         tripInput.trim();
         handleTripCommand(tripInput);
+    } else if (input == "reset") {
+        ESP.restart();
     } else if (input == "h" || input == "help") {
         // Print help message for all commands
         Serial.println("Available commands:");
@@ -65,6 +67,7 @@ void handleInput(String input) {
         Serial.println("  task, info, sys   - Displays system information.");
         Serial.println("  h, help           - Displays this help message.");
         Serial.println("  trip              - Trip odometer command. Type 'trip h' or 'trip help' for more information.");
+        Serial.println("  reset             - Resets the ESP32.");
     } else {
         Serial.println("Unknown command");
     }
