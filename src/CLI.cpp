@@ -2,6 +2,37 @@
 #include "Parameter.h"
 #include "PulseCounterTask.h"
 
+// Predefine commands as constants for consistency and easy modification
+const String CMD_HELP = "help";
+const String CMD_ECHO = "echo ";
+const String CMD_PARAM = "p";
+const String CMD_SPEED = "s";
+const String CMD_SYS = "sys";
+const String CMD_TRIP = "trip";
+const String CMD_RESET = "reset";
+
+// Command descriptions
+const String HELP_TEXT = "Available commands:\n"
+                         "  echo [text]         - Echoes the text back to the serial output.\n"
+                         "  help                - Displays this help message.\n"
+                         "  info                - Displays system information.\n"
+                         "  p [subcommand]      - Parameter command. Type 'p help' for more information.\n"
+                         "  reset               - Resets the ESP32.\n"
+                         "  s                   - Prints the current speed measurement.\n"
+                         "  sys                 - Displays system information.\n"
+                         "  trip [subcommand]   - Trip odometer command. Type 'trip help' for more information.\n";
+
+const String PARAM_HELP_TEXT = "Usage: p [index] [value] | p update [index] | p clear [index]\n"
+                               "  index: parameter index\n"
+                               "  value: new value for parameter\n"
+                               "  p update: update parameters from NVS\n"
+                               "  p clear: clear NVS and reset parameters to default\n";
+
+const String TRIP_HELP_TEXT = "Usage: trip [subcommand]\n"
+                              "  subcommand: r, reset\n"
+                              "  subcommand: s, set [value] km\n"
+                              "  subcommand: help\n";
+
 void cliTask(void * parameter);
 void handleInput(String input);
 void handleParameterCommand(String input);
@@ -11,7 +42,6 @@ void handleTripCommand(String input);
 
 void initializeCLI() {
     Serial.begin(115200);
-
     xTaskCreate(cliTask, "CLI Task", 2048, NULL, 2, NULL);
 }
 
@@ -42,36 +72,31 @@ void cliTask(void * parameter) {
 }
 
 void handleInput(String input) {
-    if (input.startsWith("echo ")) {
-        Serial.println(input.substring(5));
-    } else if (input.startsWith("p")) {
-        String paramInput = input.substring(1);
-        paramInput.trim();
+    input.trim(); // Trim the input first
+
+    if (input.startsWith(CMD_ECHO)) {
+        Serial.println(input.substring(CMD_ECHO.length()));
+    } else if (input.startsWith(CMD_PARAM)) {
+        String paramInput = input.substring(CMD_PARAM.length());
+        paramInput.trim(); // Trim the parameter input
         handleParameterCommand(paramInput);
-    } else if (input == "info" || input == "task" || input == "sys") {
+    } else if (input == CMD_SYS) {
         handleInfoCommand();
-    } else if (input == "s" || input == "speed") {
+    } else if (input == CMD_SPEED) {
         handleSpeedCommand();
-    } else if (input.startsWith("trip")) {
-        String tripInput = input.substring(4);
-        tripInput.trim();
+    } else if (input.startsWith(CMD_TRIP)) {
+        String tripInput = input.substring(CMD_TRIP.length());
+        tripInput.trim(); // Trim the trip input
         handleTripCommand(tripInput);
-    } else if (input == "reset") {
+    } else if (input == CMD_RESET) {
         ESP.restart();
-    } else if (input == "h" || input == "help") {
-        // Print help message for all commands
-        Serial.println("Available commands:");
-        Serial.println("  echo [text]       - Echoes the text back to the serial output.");
-        Serial.println("  p [subcommand]    - Parameter command. Type 'p h' or 'p help' for more information.");
-        Serial.println("  s, speed          - Prints the current speed measurmement.");
-        Serial.println("  task, info, sys   - Displays system information.");
-        Serial.println("  h, help           - Displays this help message.");
-        Serial.println("  trip              - Trip odometer command. Type 'trip h' or 'trip help' for more information.");
-        Serial.println("  reset             - Resets the ESP32.");
+    } else if (input == "h" || input == CMD_HELP) {
+        Serial.println(HELP_TEXT);
     } else {
-        Serial.println("Unknown command");
+        Serial.println("Unknown command. Type 'help' for a list of commands.");
     }
 }
+
 
 void handleSpeedCommand() {
     uint32_t currentSpeed = getSpeed();  // Assuming getSpeed() is accessible
@@ -113,13 +138,8 @@ void handleInfoCommand() {
 }
 
 void handleParameterCommand(String input) {
-    if (input == "h" || input == "help") {
-        // Print help message
-        Serial.println("Usage: p [index] [value] | p update [index] | p clear [index]");
-        Serial.println("  index: parameter index");
-        Serial.println("  value: new value for parameter");
-        Serial.println("  p update: update parameters from NVS");
-        Serial.println("  p clear: clear NVS and reset parameters to default");
+    if (input == "h" || input == CMD_HELP) {
+        Serial.println(PARAM_HELP_TEXT);
     } else if (input.startsWith("clear")) {
         String indexStr = input.substring(6);
         indexStr.trim();
@@ -181,12 +201,8 @@ void handleParameterCommand(String input) {
 }
 
 void handleTripCommand(String input) {
-    if (input == "h" || input == "help") {
-        // Print help message, no subcommand just prints trip odometer
-        Serial.println("Usage: trip [subcommand]");
-        Serial.println("  subcommand: r, reset");
-        Serial.println("  subcommand: s, set [value] km");
-        Serial.println("  subcommand: h, help");
+    if (input == "h" || input == CMD_HELP) {
+        Serial.println(TRIP_HELP_TEXT);
     } else if (input.startsWith("r") || input.startsWith("reset")) {
         resetTripOdometer();
     } else if (input.startsWith("s") || input.startsWith("set")) {
