@@ -6,7 +6,7 @@
 
 #define PULSE_COUNTER_UNIT PCNT_UNIT_0
 #define PCNT_H_LIM_VAL 10000
-#define PULSEFILTER 34464
+#define PULSEFILTER 100
 #define SAMPLE_SIZE 10
 
 volatile uint32_t frequency_buffer[SAMPLE_SIZE] = {0};
@@ -33,9 +33,20 @@ void checkAndIncrementOdometer();
 void checkAndResetTripOdometer();
 
 void initializePulseCounterTask() {
-    pcnt_unit_config(&pcnt_config);
-    pcnt_set_filter_value(PULSE_COUNTER_UNIT, PULSEFILTER);
-    pcnt_filter_enable(PULSE_COUNTER_UNIT);
+    esp_err_t err = pcnt_unit_config(&pcnt_config);
+    if (err != ESP_OK) {
+        Serial.println("Error configuring pulse counter unit: " + String(esp_err_to_name(err)));
+    }
+
+    err = pcnt_set_filter_value(PULSE_COUNTER_UNIT, PULSEFILTER);
+    if (err != ESP_OK) {
+        Serial.println("Error setting filter value: " + String(esp_err_to_name(err)));
+    }
+
+    err = pcnt_filter_enable(PULSE_COUNTER_UNIT);
+    if (err != ESP_OK) {
+        Serial.println("Error enabling filter: " + String(esp_err_to_name(err)));
+    }
 
     xTaskCreate(calculate_speed_task, "Calculate Speed", 1000, NULL, 3, NULL);
 }
