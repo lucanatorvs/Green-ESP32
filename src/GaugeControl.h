@@ -1,5 +1,3 @@
-// GaugeControl.h
-
 #ifndef GAUGE_CONTROL_H
 #define GAUGE_CONTROL_H
 

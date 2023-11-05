@@ -38,7 +38,3 @@ void sendStandbyCommand(bool enable) {
     GaugeSerial.print(enable ? '1' : '0');
     GaugeSerial.print('\n');
 }
-
-// Perhaps you will have other tasks or functions that will interact with gauges
-// You can add them here
-
