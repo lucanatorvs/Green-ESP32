@@ -1,6 +1,7 @@
 #include "CLI.h"
 #include "Parameter.h"
 #include "PulseCounterTask.h"
+#include "GaugeControl.h"
 
 // Predefine commands as constants for consistency and easy modification
 const String CMD_HELP = "help";
@@ -10,28 +11,37 @@ const String CMD_SPEED = "s";
 const String CMD_SYS = "sys";
 const String CMD_TRIP = "trip";
 const String CMD_RESET = "reset";
+const String CMD_GAUGE = "g";
 
 // Command descriptions
 const String HELP_TEXT = "Available commands:\n"
-                         "  echo [text]         - Echoes the text back to the serial output.\n"
-                         "  help                - Displays this help message.\n"
-                         "  info                - Displays system information.\n"
-                         "  p [subcommand]      - Parameter command. Type 'p help' for more information.\n"
-                         "  reset               - Resets the ESP32.\n"
-                         "  s                   - Prints the current speed measurement.\n"
-                         "  sys                 - Displays system information.\n"
-                         "  trip [subcommand]   - Trip odometer command. Type 'trip help' for more information.\n";
+                         "  echo [text]             - Echoes the text back to the serial output.\n"
+                         "  help                    - Displays this help message.\n"
+                         "  info                    - Displays system information.\n"
+                         "  p [subcommand]          - Parameter command. Type 'p help' for more information.\n"
+                         "  reset                   - Resets the ESP32.\n"
+                         "  s                       - Prints the current speed measurement.\n"
+                         "  sys                     - Displays system information.\n"
+                         "  trip [subcommand]       - Trip odometer command. Type 'trip help' for more information.\n"
+                         "  g [gauge_name] [pos]    - Gauge command. Type 'g help' for more information.";
+
 
 const String PARAM_HELP_TEXT = "Usage: p [index] [value] | p update [index] | p clear [index]\n"
                                "  index: parameter index\n"
                                "  value: new value for parameter\n"
                                "  p update: update parameters from NVS\n"
-                               "  p clear: clear NVS and reset parameters to default\n";
+                               "  p clear: clear NVS and reset parameters to default";
 
 const String TRIP_HELP_TEXT = "Usage: trip [subcommand]\n"
                               "  subcommand: r, reset\n"
                               "  subcommand: s, set [value] km\n"
-                              "  subcommand: help\n";
+                              "  subcommand: help";
+
+const String GAUGE_HELP_TEXT = "Usage: g [gauge_name] [position]\n"
+                               "  gauge_name: Name of the gauge (e.g., Speedometer, Tachometer)\n"
+                               "  position: Position to set for the gauge\n"
+                               "  Example: 'g Speedometer 50' sets the Speedometer to mid position";
+
 
 void cliTask(void * parameter);
 void handleInput(String input);
@@ -39,6 +49,7 @@ void handleParameterCommand(String input);
 void handleSpeedCommand();
 void handleInfoCommand();
 void handleTripCommand(String input);
+void handleGaugeCommand(String input);
 
 void initializeCLI() {
     Serial.begin(115200);
@@ -88,6 +99,10 @@ void handleInput(String input) {
         String tripInput = input.substring(CMD_TRIP.length());
         tripInput.trim(); // Trim the trip input
         handleTripCommand(tripInput);
+    } else if (input.startsWith(CMD_GAUGE)) {
+        String gaugeInput = input.substring(CMD_GAUGE.length());
+        gaugeInput.trim(); // Trim the gauge input
+        handleGaugeCommand(gaugeInput);
     } else if (input == CMD_RESET) {
         ESP.restart();
     } else if (input == "h" || input == CMD_HELP) {
@@ -230,4 +245,40 @@ void handleTripCommand(String input) {
     } else {
         Serial.println("Error: Invalid subcommand");
     }
+}
+
+void handleGaugeCommand(String input) {
+    int firstSpaceIndex = input.indexOf(' ');
+    if (firstSpaceIndex == -1) {
+        Serial.println("Error: Invalid gauge command. Please specify a gauge name and position.");
+        return;
+    }
+
+    String gaugeName = input.substring(0, firstSpaceIndex);
+    String positionStr = input.substring(firstSpaceIndex + 1);
+
+    positionStr.trim();
+    if (!positionStr.toInt() && positionStr != "0") {
+        Serial.println("Error: Invalid position value. Please specify a position value.");
+        return;
+    }
+
+    int position = positionStr.toInt();
+
+    if (gaugeName.equalsIgnoreCase("Speedometer")) {
+        Speedometer.setPosition(position);
+    } else if (gaugeName.equalsIgnoreCase("Tachometer")) {
+        Tachometer.setPosition(position);
+    } else if (gaugeName.equalsIgnoreCase("Dynamometer")) {
+        Dynamometer.setPosition(position);
+    } else if (gaugeName.equalsIgnoreCase("Chargeometer")) {
+        Chargeometer.setPosition(position);
+    } else if (gaugeName.equalsIgnoreCase("Thermometer")) {
+        Thermometer.setPosition(position);
+    } else {
+        Serial.println("Error: Unknown gauge name. Available gauges: Speedometer, Tachometer, Dynamometer, Chargeometer, Thermometer.");
+        return;
+    }
+
+    Serial.println("Gauge " + gaugeName + " set to position " + positionStr + ".");
 }

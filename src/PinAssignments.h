@@ -18,4 +18,7 @@
 // #define MISO_PIN 19
 // #define SCK_PIN 18
 
+#define GaugeRX 12
+#define GaugeTX 27
+
 #endif // PIN_ASSIGNMENTS_H

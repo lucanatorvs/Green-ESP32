@@ -6,12 +6,18 @@
 #include "PulseCounterTask.h"
 #include "CANListenerTask.h"
 #include "Semaphores.h"
+#include "GaugeControl.h"
 
 void setup() {
+    // Initialize semaphores
     createSemaphores();
 
-    initializeCLI();                // priority 2
+    // Initialize other components
     initializeParameter();
+    initializeGaugeControl();
+
+    // Initialize tasks
+    initializeCLI();                // priority 2
     initializeBlinkTask();          // priority 0
     initializeDisplayTask();        // priority 1
     initializePulseCounterTask();   // priority 3
