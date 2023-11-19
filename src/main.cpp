@@ -20,8 +20,8 @@ void setup() {
     initializeCLI();                // priority 2
     initializeBlinkTask();          // priority 0
     initializeDisplayTask();        // priority 1
-    initializePulseCounterTask();   // priority 3
-    initializeCANListenerTask();    // priority 2
+    initializePulseCounterTask();   // priority 2
+    initializeCANListenerTask();    // priority 3
 }
 
 void loop() {

@@ -3,7 +3,6 @@
 #include "PinAssignments.h"
 #include <driver/pcnt.h>
 
-
 #define PULSE_COUNTER_UNIT PCNT_UNIT_0
 #define PCNT_H_LIM_VAL 10000
 #define PULSEFILTER 100
@@ -48,7 +47,7 @@ void initializePulseCounterTask() {
         Serial.println("Error enabling filter: " + String(esp_err_to_name(err)));
     }
 
-    xTaskCreate(calculate_speed_task, "Calculate Speed", 1000, NULL, 3, NULL);
+    xTaskCreate(calculate_speed_task, "Calculate Speed", 1000, NULL, 2, NULL);
 }
 
 void calculate_speed_task(void *pvParameters) {

@@ -3,16 +3,17 @@
 #define PIN_ASSIGNMENTS_H
 
 // Display
-#define DISPLAY_CHIP_SELECT_PIN 21
-#define DISPLAY_DATA_COMMAND_PIN 17
-#define DISPLAY_RESET_PIN 16
+#define DISPLAY_CHIP_SELECT_PIN 21      // CS
+#define DISPLAY_DATA_COMMAND_PIN 17     // DC
+#define DISPLAY_RESET_PIN 16            // RES
+//                           MOSI 23
 
 // Pulse input
-#define PULSE_INPUT_PIN 26
+#define PULSE_INPUT_PIN 13
 
 // CAN bus
-#define MCP2515_CS_PIN 5
-#define MCP2515_INT_PIN 4
+#define MCP2515_CS_PIN 23
+#define MCP2515_INT_PIN 22
 
 // #define MOSI_PIN 23
 // #define MISO_PIN 19

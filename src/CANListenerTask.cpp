@@ -2,33 +2,66 @@
 #include "PinAssignments.h"
 #include "Semaphores.h"
 
-MCP2515* mcp2515Ptr;
-
-void canListenerTask(void * parameter);
-void IRAM_ATTR onCANReceive();
-
-void initializeCANListenerTask() {
-    // MCP2515 mcp2515(MCP2515_CS_PIN);
-    // mcp2515.reset();
-    // mcp2515.setBitrate(CAN_500KBPS);  // Set the CAN bitrate to 500 kbps
-    // mcp2515.setNormalMode();  // Set the MCP2515 to normal mode
-    // attachInterrupt(digitalPinToInterrupt(MCP2515_INT_PIN), onCANReceive, FALLING);  // Set up the interrupt
-    // mcp2515Ptr = &mcp2515;
-    // xTaskCreate(canListenerTask, "CAN Listener Task", 2048, NULL, 1, NULL);
+namespace {
+    MCP2515* mcp2515Ptr;
+    SemaphoreHandle_t canMessageSemaphore;
+    struct can_frame msg;
 }
 
-void canListenerTask(void * parameter) {
+void CanListenerTask(void * parameter);
+void IRAM_ATTR OnCanReceive();
+
+void InitializeCanListenerTask() {
+    canMessageSemaphore = xSemaphoreCreateCounting(10, 0);
+
+    if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
+        MCP2515 mcp2515(MCP2515_CS_PIN);
+        mcp2515.reset();
+        mcp2515.setBitrate(CAN_500KBPS);
+        mcp2515.setNormalMode();
+        mcp2515Ptr = &mcp2515;
+        xSemaphoreGive(spiBusMutex);
+    }
+
+    attachInterrupt(digitalPinToInterrupt(MCP2515_INT_PIN), OnCanReceive, FALLING);
+
+    xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 3, NULL);
+}
+
+void CanListenerTask(void * parameter) {
     for (;;) {
-        // struct can_frame msg;
-        // if (mcp2515Ptr->readMessage(&msg) == MCP2515::ERROR_OK) {
-        //     // Process the received CAN message here
-        // }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        if (xSemaphoreTake(canMessageSemaphore, portMAX_DELAY) == pdTRUE) {
+            if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
+                auto readResult = mcp2515Ptr->readMessage(&msg);
+                if (readResult == MCP2515::ERROR_OK) {
+                    LogCanMessage(msg);
+                } else {
+                    // Handle error
+                }
+                xSemaphoreGive(spiBusMutex);
+            }
+        }
     }
 }
 
-// Interrupt service routine
-void IRAM_ATTR onCANReceive() {
-    // Indicate that a CAN message is ready to be read
-    // This could be done by setting a flag, or directly reading the message
+void IRAM_ATTR OnCanReceive() {
+    BaseType_t higherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR(canMessageSemaphore, &higherPriorityTaskWoken);
+    mcp2515Ptr->clearInterrupts();
+    if (higherPriorityTaskWoken) {
+        portYIELD_FROM_ISR();
+    }
+}
+
+void LogCanMessage(const can_frame& msg) {
+    Serial.print("ID: ");
+    Serial.print(msg.can_id, HEX);
+    Serial.print(" DLC: ");
+    Serial.print(msg.can_dlc);
+    Serial.print(" Data: ");
+    for (int i = 0; i < msg.can_dlc; i++) {
+        Serial.print(msg.data[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
 }

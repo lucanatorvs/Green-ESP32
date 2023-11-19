@@ -15,15 +15,21 @@ void displayTask(void * parameter);
 void drawOdometer();
 
 void initializeDisplayTask() {
-    display.begin();
-    display.enableUTF8Print();
+    if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
+        display.begin();
+        display.enableUTF8Print();
+
+        xSemaphoreGive(spiBusMutex);
+    }
 
     xTaskCreate(displayTask, "Display Task", 2048, NULL, 1, NULL);
 }
 
 void displayTask(void * parameter) {
     for (;;) {
-        if (xSemaphoreTake(spiBusMutex, (TickType_t)10) == pdTRUE) {
+        if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
+            display.enableUTF8Print();
+
             display.clearBuffer();
 
             // draw a frame from xy1 to xy2, just outside the visible area, use this to position the display
@@ -42,7 +48,7 @@ void displayTask(void * parameter) {
 }
 
 void drawOdometer() {
-    char buffer[11];  // Buffer to hold formatted strings
+    char buffer[20];  // Buffer to hold formatted strings
 
     display.setFont(u8g2_font_6x12_tf);
 
