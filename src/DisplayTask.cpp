@@ -4,12 +4,12 @@
 #include "PulseCounterTask.h"
 #include "Semaphores.h"
 
-#define X1 5    // x coordinate of the top left corner of the odometer
-#define Y1 10   // y coordinate of the top left corner of the odometer
-#define X2 120  // x coordinate of the bottom right corner of the odometer
-#define Y2 60   // y coordinate of the bottom right corner of the odometer
+#define X1 4    // x coordinate of the top left corner of the odometer
+#define Y1 12   // y coordinate of the top left corner of the odometer
+#define X2 123  // x coordinate of the bottom right corner of the odometer
+#define Y2 50   // y coordinate of the bottom right corner of the odometer
 
-U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI display(U8G2_R2, DISPLAY_CHIP_SELECT_PIN, DISPLAY_DATA_COMMAND_PIN, DISPLAY_RESET_PIN);
+U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI display(U8G2_R0, DISPLAY_CHIP_SELECT_PIN, DISPLAY_DATA_COMMAND_PIN, DISPLAY_RESET_PIN);
 
 void displayTask(void * parameter);
 void drawOdometer();
@@ -33,7 +33,7 @@ void displayTask(void * parameter) {
             display.clearBuffer();
 
             // draw a frame from xy1 to xy2, just outside the visible area, use this to position the display
-            display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
+            // display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
 
             drawOdometer();
 
