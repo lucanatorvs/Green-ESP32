@@ -248,37 +248,43 @@ void handleTripCommand(String input) {
 }
 
 void handleGaugeCommand(String input) {
-    int firstSpaceIndex = input.indexOf(' ');
-    if (firstSpaceIndex == -1) {
-        Serial.println("Error: Invalid gauge command. Please specify a gauge name and position.");
-        return;
-    }
-
-    String gaugeName = input.substring(0, firstSpaceIndex);
-    String positionStr = input.substring(firstSpaceIndex + 1);
-
-    positionStr.trim();
-    if (!positionStr.toInt() && positionStr != "0") {
-        Serial.println("Error: Invalid position value. Please specify a position value.");
-        return;
-    }
-
-    int position = positionStr.toInt();
-
-    if (gaugeName.equalsIgnoreCase("Speedometer")) {
-        Speedometer.setPosition(position);
-    } else if (gaugeName.equalsIgnoreCase("Tachometer")) {
-        Tachometer.setPosition(position);
-    } else if (gaugeName.equalsIgnoreCase("Dynamometer")) {
-        Dynamometer.setPosition(position);
-    } else if (gaugeName.equalsIgnoreCase("Chargeometer")) {
-        Chargeometer.setPosition(position);
-    } else if (gaugeName.equalsIgnoreCase("Thermometer")) {
-        Thermometer.setPosition(position);
+    if (input == "h" || input == CMD_HELP) {
+        Serial.println(GAUGE_HELP_TEXT);
+    } else if (input == "on") {
+        sendStandbyCommand(true);
     } else {
-        Serial.println("Error: Unknown gauge name. Available gauges: Speedometer, Tachometer, Dynamometer, Chargeometer, Thermometer.");
-        return;
-    }
+        int firstSpaceIndex = input.indexOf(' ');
+        if (firstSpaceIndex == -1) {
+            Serial.println("Error: Invalid gauge command. Please specify a gauge name and position.");
+            return;
+        }
 
-    Serial.println("Gauge " + gaugeName + " set to position " + positionStr + ".");
+        String gaugeName = input.substring(0, firstSpaceIndex);
+        String positionStr = input.substring(firstSpaceIndex + 1);
+
+        positionStr.trim();
+        if (!positionStr.toInt() && positionStr != "0") {
+            Serial.println("Error: Invalid position value. Please specify a position value.");
+            return;
+        }
+
+        int position = positionStr.toInt();
+
+        if (gaugeName.equalsIgnoreCase("Speedometer")) {
+            Speedometer.setPosition(position);
+        } else if (gaugeName.equalsIgnoreCase("Tachometer")) {
+            Tachometer.setPosition(position);
+        } else if (gaugeName.equalsIgnoreCase("Dynamometer")) {
+            Dynamometer.setPosition(position);
+        } else if (gaugeName.equalsIgnoreCase("Chargeometer")) {
+            Chargeometer.setPosition(position);
+        } else if (gaugeName.equalsIgnoreCase("Thermometer")) {
+            Thermometer.setPosition(position);
+        } else {
+            Serial.println("Error: Unknown gauge name. Available gauges: Speedometer, Tachometer, Dynamometer, Chargeometer, Thermometer.");
+            return;
+        }
+
+        Serial.println("Gauge " + gaugeName + " set to position " + positionStr + ".");
+    }
 }

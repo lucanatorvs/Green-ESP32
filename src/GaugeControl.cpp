@@ -5,11 +5,11 @@ HardwareSerial GaugeSerial(1);
 
 // Define the ranges for each gauge
 // minValue, maxValue, minAngle, maxAngle
-GaugeRange SpeedometerRange     (0, 100, 0, 270);
-GaugeRange TachometerRange      (0, 100, 0, 270);
-GaugeRange DynamometerRange     (0, 100, 0, 270);
-GaugeRange ChargeometerRange    (0, 100, 0, 270);
-GaugeRange ThermometerRange     (0, 100, 0, 270);
+GaugeRange SpeedometerRange     (0, 200, 17, 254);
+GaugeRange TachometerRange      (0, 9000, 4, 246);
+GaugeRange DynamometerRange     (-60, 90, 19, 144);
+GaugeRange ChargeometerRange    (0, 100, 11, 99);
+GaugeRange ThermometerRange     (-20, 100, 11, 103);
 
 // Instantiate each gauge
 Gauge Speedometer   ("Speedometer",     GaugeSerial, SpeedometerRange);
@@ -26,11 +26,11 @@ void initializeGaugeControl() {
     sendStandbyCommand(true);
     
     // set all gauges to 0 position
-    Speedometer.setPosition(0);
-    Tachometer.setPosition(0);
+    Speedometer.setPosition(40);
+    Tachometer.setPosition(1000);
     Dynamometer.setPosition(0);
-    Chargeometer.setPosition(0);
-    Thermometer.setPosition(0);
+    Chargeometer.setPosition(50);
+    Thermometer.setPosition(20);
 }
 
 void sendStandbyCommand(bool enable) {
