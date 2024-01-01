@@ -8,7 +8,7 @@ Parameter parameters[] = {
     // index, name, defaultValue, value     // unit
     {0, "OdometerCount", 199000, 199000},   // Kilometers
     {1, "BlinkSpeed", 500, 500},            // Milliseconds
-    {2, "PulseDelay", 100, 100},            // Milliseconds
+    {2, "PulseDelay", 100, 100},            // Milliseconds for the pulse counter to integrate pulses
     {3, "SpeedFactor", 800, 800}            // mm per pulse
 };
 

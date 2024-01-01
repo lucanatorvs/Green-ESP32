@@ -10,8 +10,9 @@ namespace {
 
 void CanListenerTask(void * parameter);
 void IRAM_ATTR OnCanReceive();
+void LogCanMessage(const can_frame& msg);
 
-void InitializeCanListenerTask() {
+void initializeCANListenerTask() {
     canMessageSemaphore = xSemaphoreCreateCounting(10, 0);
 
     if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {

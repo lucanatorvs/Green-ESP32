@@ -33,7 +33,7 @@ void displayTask(void * parameter) {
             display.clearBuffer();
 
             // draw a frame from xy1 to xy2, just outside the visible area, use this to position the display
-            // display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
+            display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
 
             drawOdometer();
 
@@ -50,7 +50,7 @@ void displayTask(void * parameter) {
 void drawOdometer() {
     char buffer[20];  // Buffer to hold formatted strings
 
-    display.setFont(u8g2_font_6x12_tf);
+        display.setFont(u8g2_font_6x12_tf);
 
     // Draw odometer in the top left corner
     sprintf(buffer, "%d km", parameters[0].value);

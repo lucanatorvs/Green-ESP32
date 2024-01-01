@@ -38,9 +38,11 @@ const String TRIP_HELP_TEXT = "Usage: trip [subcommand]\n"
                               "  subcommand: help";
 
 const String GAUGE_HELP_TEXT = "Usage: g [gauge_name] [position]\n"
-                               "  gauge_name: Name of the gauge (e.g., Speedometer, Tachometer)\n"
+                               "       g on  (turns all gauges on)\n"
+                               "       g off (turns all gauges off)\n"
+                               "  gauge_name: Speedometer, Tachometer, Dynamometer, Chargeometer, Thermometer\n"
                                "  position: Position to set for the gauge\n"
-                               "  Example: 'g Speedometer 50' sets the Speedometer to mid position";
+                               "  Example: 'g Speedometer 50' sets the Speedometer to 50km/h\n";
 
 
 void cliTask(void * parameter);
@@ -252,6 +254,8 @@ void handleGaugeCommand(String input) {
         Serial.println(GAUGE_HELP_TEXT);
     } else if (input == "on") {
         sendStandbyCommand(true);
+    } else if (input == "off") {
+        sendStandbyCommand(false);
     } else {
         int firstSpaceIndex = input.indexOf(' ');
         if (firstSpaceIndex == -1) {
