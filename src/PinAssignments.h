@@ -22,4 +22,7 @@
 #define GaugeRX 27
 #define GaugeTX 12
 
+// Button
+#define BUTTON_PIN 33
+
 #endif // PIN_ASSIGNMENTS_H

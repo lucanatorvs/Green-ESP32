@@ -4,6 +4,7 @@
 #include <Arduino.h>
 
 extern SemaphoreHandle_t spiBusMutex;
+extern SemaphoreHandle_t buttonSemaphore;
 
 void createSemaphores();
 

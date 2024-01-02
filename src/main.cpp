@@ -7,6 +7,7 @@
 #include "CANListenerTask.h"
 #include "Semaphores.h"
 #include "GaugeControl.h"
+#include "ButtonTask.h"
 
 void setup() {
     // Initialize semaphores
@@ -22,6 +23,7 @@ void setup() {
     initializeDisplayTask();        // priority 1
     initializePulseCounterTask();   // priority 2
     initializeCANListenerTask();    // priority 3
+    initializeButtonTask();         // priority 4
 }
 
 void loop() {
