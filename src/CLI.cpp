@@ -2,6 +2,8 @@
 #include "Parameter.h"
 #include "PulseCounterTask.h"
 #include "GaugeControl.h"
+#include "semaphores.h"
+#include "DisplayTask.h"
 
 // Predefine commands as constants for consistency and easy modification
 const String CMD_HELP = "help";
@@ -15,11 +17,13 @@ const String CMD_GAUGE = "g";
 
 // Command descriptions
 const String HELP_TEXT = "Available commands:\n"
+                         "  off                     - Turns off the cluster.\n"
+                         "  on                      - Turns on the cluster.\n"
                          "  echo [text]             - Echoes the text back to the serial output.\n"
                          "  help                    - Displays this help message.\n"
-                         "  info                    - Displays system information.\n"
                          "  p [subcommand]          - Parameter command. Type 'p help' for more information.\n"
                          "  reset                   - Resets the ESP32.\n"
+                         "  ready                   - Displays the ready screen.\n"
                          "  s                       - Prints the current speed measurement.\n"
                          "  sys                     - Displays system information.\n"
                          "  trip [subcommand]       - Trip odometer command. Type 'trip help' for more information.\n"
@@ -101,6 +105,14 @@ void handleInput(String input) {
         String tripInput = input.substring(CMD_TRIP.length());
         tripInput.trim(); // Trim the trip input
         handleTripCommand(tripInput);
+    } else if (input == "ready") {
+        currentDisplayMode = READY;
+    } else if (input == "off") {
+        currentDisplayMode = OFF;
+        sendStandbyCommand(false);
+    } else if (input == "on") {
+        currentDisplayMode = EMPTY;
+        sendStandbyCommand(true);
     } else if (input.startsWith(CMD_GAUGE)) {
         String gaugeInput = input.substring(CMD_GAUGE.length());
         gaugeInput.trim(); // Trim the gauge input
@@ -113,7 +125,6 @@ void handleInput(String input) {
         Serial.println("Unknown command. Type 'help' for a list of commands.");
     }
 }
-
 
 void handleSpeedCommand() {
     uint32_t currentSpeed = getSpeed();  // Assuming getSpeed() is accessible
@@ -152,6 +163,38 @@ void handleInfoCommand() {
     Serial.print(":");
     if (uptime % 60 < 10) Serial.print("0");
     Serial.println(uptime % 60);
+
+    // the state of the semaphores
+    UBaseType_t buttonSemaphoreCount = uxSemaphoreGetCount(buttonSemaphore);
+    UBaseType_t buttonStateSemaphoreCount = uxSemaphoreGetCount(buttonStateSemaphore);
+    Serial.print("Button Semaphore Count: ");
+    Serial.println(buttonSemaphoreCount);
+    Serial.print("Button State Semaphore Count: ");
+    Serial.println(buttonStateSemaphoreCount);
+
+    // give the current display mode
+    Serial.print("Current Display Mode: ");
+    switch (currentDisplayMode) {
+        case EMPTY:
+            Serial.println("EMPTY");
+            break;
+        case HELLO:
+            Serial.println("HELLO");
+            break;
+        case NOTIFICATION:
+            Serial.println("NOTIFICATION");
+            break;
+        case READY:
+            Serial.println("READY");
+            break;
+        case OFF:
+            Serial.println("OFF");
+            break;
+        default:
+            Serial.println("UNKNOWN");
+            break;
+    }
+
 }
 
 void handleParameterCommand(String input) {

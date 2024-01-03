@@ -5,6 +5,7 @@
 
 extern SemaphoreHandle_t spiBusMutex;
 extern SemaphoreHandle_t buttonSemaphore;
+extern SemaphoreHandle_t buttonStateSemaphore;
 
 void createSemaphores();
 

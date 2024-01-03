@@ -48,6 +48,8 @@ void ButtonTask(void * parameter) {
                 } else {
                     Serial.println("Long press detected");
                 }
+                // increment semaphore count
+                xSemaphoreGive(buttonStateSemaphore);
             }
         }
     }

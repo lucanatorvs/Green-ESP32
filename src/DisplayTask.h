@@ -8,4 +8,14 @@
 // Initialize display task
 void initializeDisplayTask();
 
+enum DisplayMode {
+    EMPTY,
+    HELLO,
+    NOTIFICATION,
+    READY,
+    OFF
+};
+
+extern DisplayMode currentDisplayMode;
+
 #endif // DisplayTask_h

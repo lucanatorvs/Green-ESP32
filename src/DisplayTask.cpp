@@ -12,7 +12,10 @@
 U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI display(U8G2_R0, DISPLAY_CHIP_SELECT_PIN, DISPLAY_DATA_COMMAND_PIN, DISPLAY_RESET_PIN);
 
 void displayTask(void * parameter);
+void displayModeSwichTask(void * parameter);
 void drawOdometer();
+
+DisplayMode currentDisplayMode = EMPTY; // Global variable to keep track of the current display mode
 
 void initializeDisplayTask() {
     if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
@@ -23,25 +26,62 @@ void initializeDisplayTask() {
     }
 
     xTaskCreate(displayTask, "Display Task", 2048, NULL, 1, NULL);
+    xTaskCreate(displayModeSwichTask, "Display Mode Switch Task", 2048, NULL, 1, NULL);
+}
+
+void displayModeSwichTask(void * parameter) {
+    for (;;) {
+        if (xSemaphoreTake(buttonStateSemaphore, portMAX_DELAY) == pdTRUE) {
+            if (currentDisplayMode != OFF) {
+                if (currentDisplayMode == NOTIFICATION || currentDisplayMode == READY) {
+                    currentDisplayMode = EMPTY; // Dismiss the notification
+                } else {
+                    if (currentDisplayMode == EMPTY) {
+                        currentDisplayMode = HELLO;
+                    } else {
+                        currentDisplayMode = EMPTY;
+                    }
+                }
+            }
+        }
+    }
 }
 
 void displayTask(void * parameter) {
     for (;;) {
         if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
-            display.enableUTF8Print();
+            if (currentDisplayMode != OFF) {
+                display.setPowerSave(0); // Turn on the display
+                display.enableUTF8Print();
+                display.clearBuffer();
+                // display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
+                drawOdometer();
 
-            display.clearBuffer();
-
-            // draw a frame from xy1 to xy2, just outside the visible area, use this to position the display
-            display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
-
-            drawOdometer();
-
-
-            display.sendBuffer();
-
+                // Draw content based on the current display mode
+                switch (currentDisplayMode) {
+                    case EMPTY:
+                        // Nothing to draw in this mode
+                        break;
+                    case HELLO:
+                        display.setFont(u8g2_font_6x12_tf);
+                        display.drawStr(X1 + 3, Y1 + 20, "Hello World!");
+                        // dyaplay the time from milis in seconds
+                        display.drawStr(X1 + 3, Y1 + 32, String(millis() / 1000).c_str());
+                        break;
+                    case NOTIFICATION:
+                        display.setFont(u8g2_font_6x12_tf);
+                        display.drawStr(X1 + 3, Y1 + 20, "Notification!");
+                        break;
+                    case READY:
+                        display.setFont(u8g2_font_9x18_tf);
+                        display.drawStr(X1 + (X2 - X1 - display.getStrWidth("Ready!")) / 2, Y1 + 27, "Ready!");
+                        break;
+                }
+                display.sendBuffer();
+            } else {
+                display.setPowerSave(1); // Turn off the display
+            }
             xSemaphoreGive(spiBusMutex);
-
             vTaskDelay(pdMS_TO_TICKS(100));
         }
     }
