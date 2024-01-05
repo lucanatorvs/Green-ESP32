@@ -8,6 +8,7 @@
 #include "Semaphores.h"
 #include "GaugeControl.h"
 #include "ButtonTask.h"
+#include "Timers.h"
 
 void setup() {
     // Initialize semaphores
@@ -18,6 +19,7 @@ void setup() {
     initializeGaugeControl();
 
     // Initialize tasks
+    initializeTimerTask();          // priority 3
     initializeCLI();                // priority 2
     initializeBlinkTask();          // priority 0
     initializeDisplayTask();        // priority 1
