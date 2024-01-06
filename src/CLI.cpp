@@ -4,6 +4,7 @@
 #include "GaugeControl.h"
 #include "semaphores.h"
 #include "DisplayTask.h"
+#include "CANListenerTask.h"
 
 // Predefine commands as constants for consistency and easy modification
 const String CMD_HELP = "help";
@@ -14,6 +15,8 @@ const String CMD_SYS = "sys";
 const String CMD_TRIP = "trip";
 const String CMD_RESET = "reset";
 const String CMD_GAUGE = "g";
+const String CMD_START_MONITOR = "canmonitor";
+const String CMD_STOP_MONITOR = "stopmonitor";
 
 // Command descriptions
 const String HELP_TEXT = "Available commands:\n"
@@ -27,6 +30,8 @@ const String HELP_TEXT = "Available commands:\n"
                          "  s                       - Prints the current speed measurement.\n"
                          "  sys                     - Displays system information.\n"
                          "  trip [subcommand]       - Trip odometer command. Type 'trip help' for more information.\n"
+                         "  canmonitor [id]         - Starts monitoring CAN messages. Type 'canmonitor help' for more information.\n"
+                         "  stopmonitor             - Stops monitoring CAN messages.\n"
                          "  g [gauge_name] [pos]    - Gauge command. Type 'g help' for more information.";
 
 
@@ -121,8 +126,22 @@ void handleInput(String input) {
         ESP.restart();
     } else if (input == "h" || input == CMD_HELP) {
         Serial.println(HELP_TEXT);
+    } else if (input.startsWith(CMD_START_MONITOR)) {
+        String idStr = input.substring(CMD_START_MONITOR.length());
+        idStr.trim();
+        uint32_t filterID = (idStr.length() > 0) ? strtoul(idStr.c_str(), nullptr, 16) : 0;
+        setCANMonitoring(true, filterID);
+        Serial.println("CAN monitoring started.");
+    } else if (input == CMD_STOP_MONITOR) {
+        setCANMonitoring(false);
+        Serial.println("CAN monitoring stopped.");
     } else {
-        Serial.println("Unknown command. Type 'help' for a list of commands.");
+        if (CANMonitoring()) {
+            setCANMonitoring(false);
+            Serial.println("CAN monitoring stopped.");
+        } else {
+            Serial.println("Unknown command. Type 'help' for a list of commands.");
+        }
     }
 }
 

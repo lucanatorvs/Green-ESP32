@@ -8,6 +8,9 @@ namespace {
     struct can_frame msg;
 }
 
+bool monitorCAN = false;
+uint32_t filterCANID = 0;
+
 void CanListenerTask(void * parameter);
 void IRAM_ATTR OnCanReceive();
 void LogCanMessage(const can_frame& msg);
@@ -55,14 +58,25 @@ void IRAM_ATTR OnCanReceive() {
 }
 
 void LogCanMessage(const can_frame& msg) {
-    Serial.print("ID: ");
-    Serial.print(msg.can_id, HEX);
-    Serial.print(" DLC: ");
-    Serial.print(msg.can_dlc);
-    Serial.print(" Data: ");
-    for (int i = 0; i < msg.can_dlc; i++) {
-        Serial.print(msg.data[i], HEX);
-        Serial.print(" ");
+    if (monitorCAN && (filterCANID == 0 || msg.can_id == filterCANID)) {
+        Serial.print("ID: ");
+        Serial.print(msg.can_id, HEX);
+        Serial.print(" DLC: ");
+        Serial.print(msg.can_dlc);
+        Serial.print(" Data: ");
+        for (int i = 0; i < msg.can_dlc; i++) {
+            Serial.print(msg.data[i], HEX);
+            Serial.print(" ");
+        }
+        Serial.println();
     }
-    Serial.println();
+}
+
+void setCANMonitoring(bool state, uint32_t filterID) {
+    monitorCAN = state;
+    filterCANID = filterID;
+}
+
+int CANMonitoring() {
+    return monitorCAN;
 }
