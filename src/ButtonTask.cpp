@@ -44,9 +44,9 @@ void ButtonTask(void * parameter) {
                 unsigned long currentTime = millis();
                 unsigned long pressDuration = currentTime - buttonPressTime;
                 if (pressDuration < 750) {
-                    Serial.println("Short press detected");
+                    // Serial.println("Short press detected");
                 } else {
-                    Serial.println("Long press detected");
+                    // Serial.println("Long press detected");
                 }
                 // increment semaphore count
                 xSemaphoreGive(buttonStateSemaphore);

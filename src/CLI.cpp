@@ -5,6 +5,7 @@
 #include "semaphores.h"
 #include "DisplayTask.h"
 #include "CANListenerTask.h"
+#include "driveTelemetry.h"
 
 // Predefine commands as constants for consistency and easy modification
 const String CMD_HELP = "help";
@@ -30,8 +31,9 @@ const String HELP_TEXT = "Available commands:\n"
                          "  s                       - Prints the current speed measurement.\n"
                          "  sys                     - Displays system information.\n"
                          "  trip [subcommand]       - Trip odometer command. Type 'trip help' for more information.\n"
-                         "  canmonitor [id]         - Starts monitoring CAN messages. Type 'canmonitor help' for more information.\n"
+                         "  canmonitor [id]         - Starts monitoring CAN messages. Type 'canmonitor help' for more info.\n"
                          "  stopmonitor             - Stops monitoring CAN messages.\n"
+                         "  telemetry               - Displays the telemetry data.\n"
                          "  g [gauge_name] [pos]    - Gauge command. Type 'g help' for more information.";
 
 
@@ -49,6 +51,7 @@ const String TRIP_HELP_TEXT = "Usage: trip [subcommand]\n"
 const String GAUGE_HELP_TEXT = "Usage: g [gauge_name] [position]\n"
                                "       g on  (turns all gauges on)\n"
                                "       g off (turns all gauges off)\n"
+                               "       g autoupdate [on/off] (turns auto update on/off)\n"
                                "  gauge_name: Speedometer, Tachometer, Dynamometer, Chargeometer, Thermometer\n"
                                "  position: Position to set for the gauge\n"
                                "  Example: 'g Speedometer 50' sets the Speedometer to 50km/h\n";
@@ -61,6 +64,7 @@ void handleSpeedCommand();
 void handleInfoCommand();
 void handleTripCommand(String input);
 void handleGaugeCommand(String input);
+void printTelemetryData();
 
 void initializeCLI() {
     Serial.begin(115200);
@@ -83,6 +87,11 @@ void cliTask(void * parameter) {
                     input.trim();
                     handleInput(input);
                     input = "";  // Reset input string for next command
+                } else {
+                    if (CANMonitoring() == 1) {
+                        setCANMonitoring(false);
+                        Serial.println("CAN monitoring stopped.");
+                    }
                 }
             } else {
                 input += ch;  // Accumulate characters into input string
@@ -124,24 +133,27 @@ void handleInput(String input) {
         handleGaugeCommand(gaugeInput);
     } else if (input == CMD_RESET) {
         ESP.restart();
+    } else if (input == "telemetry") {
+        printTelemetryData();
     } else if (input == "h" || input == CMD_HELP) {
         Serial.println(HELP_TEXT);
     } else if (input.startsWith(CMD_START_MONITOR)) {
-        String idStr = input.substring(CMD_START_MONITOR.length());
-        idStr.trim();
-        uint32_t filterID = (idStr.length() > 0) ? strtoul(idStr.c_str(), nullptr, 16) : 0;
-        setCANMonitoring(true, filterID);
-        Serial.println("CAN monitoring started.");
+        if (input == CMD_START_MONITOR + " h" || input == CMD_START_MONITOR + " help") {
+            Serial.println("Usage: canmonitor [id]\n"
+                           "  id: CAN ID to filter for (optional)");
+            return;
+        } else {
+            String idStr = input.substring(CMD_START_MONITOR.length());
+            idStr.trim();
+            uint32_t filterID = (idStr.length() > 0) ? strtoul(idStr.c_str(), nullptr, 16) : 0;
+            setCANMonitoring(true, filterID);
+            Serial.println("CAN monitoring started.");
+        }
     } else if (input == CMD_STOP_MONITOR) {
         setCANMonitoring(false);
         Serial.println("CAN monitoring stopped.");
     } else {
-        if (CANMonitoring()) {
-            setCANMonitoring(false);
-            Serial.println("CAN monitoring stopped.");
-        } else {
-            Serial.println("Unknown command. Type 'help' for a list of commands.");
-        }
+        Serial.println("Unknown command. Type 'help' for a list of commands.");
     }
 }
 
@@ -214,6 +226,29 @@ void handleInfoCommand() {
             break;
     }
 
+    // give the auto update state of the gauges
+    Serial.print("Auto Update: ");
+    Serial.println(getAutoUpdate() ? "ON" : "OFF");
+}
+
+void printTelemetryData(){
+    Serial.println("Telemetry Data:");
+    Serial.print("Motor Temperature: ");
+    Serial.println(telemetryData.motorTemp);
+    Serial.print("Inverter Temperature: ");
+    Serial.println(telemetryData.inverterTemp);
+    Serial.print("Motor RPM: ");
+    Serial.println(telemetryData.rpm);
+    Serial.print("Motor DC Voltage: ");
+    Serial.println(telemetryData.DCVoltage);
+    Serial.print("Motor DC Current: ");
+    Serial.println(telemetryData.DCCurrent);
+    Serial.print("Power Unit Flags: ");
+    String binaryString = String(telemetryData.powerUnitFlags, BIN);
+    while (binaryString.length() < 16) {
+        binaryString = "0" + binaryString;
+    }
+    Serial.println(binaryString);
 }
 
 void handleParameterCommand(String input) {
@@ -318,6 +353,16 @@ void handleGaugeCommand(String input) {
         sendStandbyCommand(true);
     } else if (input == "off") {
         sendStandbyCommand(false);
+    } else if (input.startsWith("autoupdate")) {
+        String stateStr = input.substring(10);
+        stateStr.trim();
+        if (stateStr.equalsIgnoreCase("on")) {
+            enableAutoUpdate(true);
+        } else if (stateStr.equalsIgnoreCase("off")) {
+            enableAutoUpdate(false);
+        } else {
+            Serial.println("Error: Invalid state. Please specify 'on' or 'off'.");
+        }
     } else {
         int firstSpaceIndex = input.indexOf(' ');
         if (firstSpaceIndex == -1) {
@@ -330,7 +375,7 @@ void handleGaugeCommand(String input) {
 
         positionStr.trim();
         if (!positionStr.toInt() && positionStr != "0") {
-            Serial.println("Error: Invalid position value. Please specify a position value.");
+            Serial.println("Error: Invalid position value. Please specify a position value, or use help for more information.");
             return;
         }
 

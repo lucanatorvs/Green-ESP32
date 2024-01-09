@@ -62,6 +62,8 @@ public:
 // Declare the GaugeControl functions
 void initializeGaugeControl();
 void sendStandbyCommand(bool enable);
+void enableAutoUpdate(bool enable);
+bool getAutoUpdate();
 
 // Declare the gauges
 extern Gauge Speedometer;

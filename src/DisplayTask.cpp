@@ -3,6 +3,7 @@
 #include "PinAssignments.h"
 #include "PulseCounterTask.h"
 #include "Semaphores.h"
+#include "driveTelemetry.h"
 
 #define X1 4    // x coordinate of the top left corner of the odometer
 #define Y1 12   // y coordinate of the top left corner of the odometer
