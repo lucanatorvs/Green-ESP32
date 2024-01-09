@@ -24,7 +24,7 @@ void initializeCANListenerTask() {
     if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
         MCP2515 mcp2515(MCP2515_CS_PIN);
         mcp2515.reset();
-        mcp2515.setBitrate(CAN_500KBPS);
+        mcp2515.setBitrate(CAN_250KBPS, MCP_8MHZ);
         mcp2515.setNormalMode();
         mcp2515Ptr = &mcp2515;
         xSemaphoreGive(spiBusMutex);
