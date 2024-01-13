@@ -101,14 +101,23 @@ void gaugeAnimatingTask(void * parameter) {
 
     vTaskDelay(pdMS_TO_TICKS(300));
 
-    int iMax = 30;
+    int iMax = 50;
+    for (int i = 0; i <= iMax; i++) {
+        Chargeometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Chargeometer.getMinPosition(), Chargeometer.getMaxPosition()))));
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
     for (int i = 0; i <= iMax; i++) {
         Speedometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Speedometer.getMinPosition(), Speedometer.getMaxPosition()))));
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    for (int i = 0; i <= iMax; i++) {
         Tachometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Tachometer.getMinPosition(), Tachometer.getMaxPosition()))));
         Dynamometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Dynamometer.getMinPosition(), Dynamometer.getMaxPosition()))));
-        Chargeometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Chargeometer.getMinPosition(), Chargeometer.getMaxPosition()))));
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    for (int i = 0; i <= iMax; i++) {
         Thermometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Thermometer.getMinPosition(), Thermometer.getMaxPosition()))));
-        vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelay(pdMS_TO_TICKS(2));
     }
 
     // short pause
@@ -116,12 +125,21 @@ void gaugeAnimatingTask(void * parameter) {
 
     // reverse the animation
     for (int i = iMax; i >= 0; i--) {
-        Speedometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Speedometer.getMinPosition(), Speedometer.getMaxPosition()))));
+        Thermometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Thermometer.getMinPosition(), Thermometer.getMaxPosition()))));
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    for (int i = iMax; i >= 0; i--) {
         Tachometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Tachometer.getMinPosition(), Tachometer.getMaxPosition()))));
         Dynamometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Dynamometer.getMinPosition(), Dynamometer.getMaxPosition()))));
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    for (int i = iMax; i >= 0; i--) {
+        Speedometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Speedometer.getMinPosition(), Speedometer.getMaxPosition()))));
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    for (int i = iMax; i >= 0; i--) {
         Chargeometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Chargeometer.getMinPosition(), Chargeometer.getMaxPosition()))));
-        Thermometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Thermometer.getMinPosition(), Thermometer.getMaxPosition()))));
-        vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelay(pdMS_TO_TICKS(2));
     }
     autoUpdate = true;
 
