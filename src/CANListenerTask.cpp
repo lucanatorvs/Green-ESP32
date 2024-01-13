@@ -4,60 +4,45 @@
 #include "driveTelemetry.h"
 
 namespace {
-    MCP2515* mcp2515Ptr;
-    SemaphoreHandle_t canMessageSemaphore;
     struct can_frame msg;
 }
 
+MCP2515 mcp2515(MCP2515_CS_PIN);  // Global MCP2515 object
 Telemetry telemetryData;
 bool monitorCAN = false;
 uint32_t filterCANID = 0;
 
 void CanListenerTask(void * parameter);
-void IRAM_ATTR OnCanReceive();
 void LogCanMessage(const can_frame& msg);
 void HandleCanMessage(const can_frame& msg);
 
 void initializeCANListenerTask() {
-    canMessageSemaphore = xSemaphoreCreateCounting(10, 0);
-
     if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
-        MCP2515 mcp2515(MCP2515_CS_PIN);
         mcp2515.reset();
-        mcp2515.setBitrate(CAN_250KBPS, MCP_8MHZ);
+        mcp2515.setBitrate(CAN_250KBPS, MCP_16MHZ);
         mcp2515.setNormalMode();
-        mcp2515Ptr = &mcp2515;
         xSemaphoreGive(spiBusMutex);
     }
-
-    attachInterrupt(digitalPinToInterrupt(MCP2515_INT_PIN), OnCanReceive, FALLING);
 
     xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 3, NULL);
 }
 
 void CanListenerTask(void * parameter) {
     for (;;) {
-        if (xSemaphoreTake(canMessageSemaphore, portMAX_DELAY) == pdTRUE) {
-            if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
-                auto readResult = mcp2515Ptr->readMessage(&msg);
-                if (readResult == MCP2515::ERROR_OK) {
-                    LogCanMessage(msg);
-                    HandleCanMessage(msg);
-                } else {
-                    // Handle error
-                }
-                xSemaphoreGive(spiBusMutex);
-            }
-        }
-    }
-}
+        vTaskDelay(pdMS_TO_TICKS(100)); // 10Hz polling rate
 
-void IRAM_ATTR OnCanReceive() {
-    BaseType_t higherPriorityTaskWoken = pdFALSE;
-    xSemaphoreGiveFromISR(canMessageSemaphore, &higherPriorityTaskWoken);
-    mcp2515Ptr->clearInterrupts();
-    if (higherPriorityTaskWoken) {
-        portYIELD_FROM_ISR();
+        if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
+            auto readResult = mcp2515.readMessage(&msg);
+            if (readResult == MCP2515::ERROR_OK) {
+                LogCanMessage(msg);
+                HandleCanMessage(msg);
+            } else {
+                // Handle error
+                Serial.print("Error: ");
+                Serial.println(readResult);
+            }
+            xSemaphoreGive(spiBusMutex);
+        }
     }
 }
 
