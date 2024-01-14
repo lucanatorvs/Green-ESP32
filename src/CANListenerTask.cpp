@@ -19,10 +19,12 @@ void HandleCanMessage(const can_frame& msg);
 void initializeCANListenerTask() {
     if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
         mcp2515.reset();
-        mcp2515.setBitrate(CAN_250KBPS, MCP_16MHZ);
+        mcp2515.setBitrate(CAN_250KBPS, MCP_8MHZ);
         mcp2515.setNormalMode();
         xSemaphoreGive(spiBusMutex);
     }
+
+    // pinMode(MCP2515_INT_PIN, INPUT_PULLUP);
 
     xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 3, NULL);
 }
@@ -30,19 +32,20 @@ void initializeCANListenerTask() {
 void CanListenerTask(void * parameter) {
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(100)); // 10Hz polling rate
-
         if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
+
             auto readResult = mcp2515.readMessage(&msg);
             if (readResult == MCP2515::ERROR_OK) {
                 LogCanMessage(msg);
                 HandleCanMessage(msg);
             } else {
                 // Handle error
-                Serial.print("Error: ");
-                Serial.println(readResult);
+                // Serial.print("Error: ");
+                // Serial.println(readResult);
             }
             xSemaphoreGive(spiBusMutex);
         }
+        // Serial.println(digitalRead(19));
     }
 }
 
