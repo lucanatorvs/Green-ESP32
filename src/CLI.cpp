@@ -147,7 +147,12 @@ void handleInput(String input) {
             idStr.trim();
             uint32_t filterID = (idStr.length() > 0) ? strtoul(idStr.c_str(), nullptr, 16) : 0;
             setCANMonitoring(true, filterID);
-            Serial.println("CAN monitoring started.");
+            Serial.print("CAN monitoring started.");
+            if (filterID != 0) {
+                Serial.print(" Filtering for hex ID: ");
+                Serial.print(filterID, HEX);
+            }
+            Serial.println();
         }
     } else if (input == CMD_STOP_MONITOR) {
         setCANMonitoring(false);
