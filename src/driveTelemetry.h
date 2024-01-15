@@ -11,6 +11,18 @@ struct Telemetry {
     float DCVoltage;         // (0-65535) 0 = 0 V, 65535 = 655.35 V
     float DCCurrent;         // (0-65535) 0 = 0 A, 65535 = 6553.5 A
     uint16_t powerUnitFlags;    // Bitmask of power unit status flags
+    int16_t Current;            // (-32768-32767) -32768 = -3276.8 A, 32767 = 3276.7 A
+    uint16_t Charge;            // (0-65535) 0 = 0 Ah, 65535 = 6553.5 Ah
+    uint8_t SoC;                // (0-255) 0 = 0%, 100 = 100%
+    // float VoltageLimit;          // Voltage Limit
+    // float CurrentLimit;          // Current Limit
+    // bool ChargeContactor;        // Charge Contactor State
+    // bool BatteryContactor;       // Battery Contactor State
+    uint32_t Voltage;         // Voltage Least Significant Word
+    // uint16_t VoltageMSW;         // Voltage Most Significant Word
+    // float EstimatedEnergy;       // Estimated Energy
+    // bool HighTemperatureWarning; // High Temperature Warning
+    // uint8_t CustomCurrentLimit;  // Custom Current Limit
 };
 
 extern Telemetry telemetryData;

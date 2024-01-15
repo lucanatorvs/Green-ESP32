@@ -233,23 +233,66 @@ void handleInfoCommand() {
 
 void printTelemetryData(){
     Serial.println("Telemetry Data:");
+
     Serial.print("Motor Temperature: ");
     Serial.println(telemetryData.motorTemp);
+
     Serial.print("Inverter Temperature: ");
     Serial.println(telemetryData.inverterTemp);
+
     Serial.print("Motor RPM: ");
     Serial.println(telemetryData.rpm);
+
     Serial.print("Motor DC Voltage: ");
-    Serial.println(telemetryData.DCVoltage);
+    Serial.println(telemetryData.DCVoltage, 1); // 2 decimal places for float
+
     Serial.print("Motor DC Current: ");
-    Serial.println(telemetryData.DCCurrent);
+    Serial.println(telemetryData.DCCurrent, 1); // 2 decimal places for float
+
     Serial.print("Power Unit Flags: ");
     String binaryString = String(telemetryData.powerUnitFlags, BIN);
     while (binaryString.length() < 16) {
         binaryString = "0" + binaryString;
     }
     Serial.println(binaryString);
+
+    // Serial.print("Current: ");
+    // Serial.println(telemetryData.Current / 10.0, 1); // Scaling factor for Current
+
+    // Serial.print("Charge: ");
+    // Serial.println(telemetryData.Charge / 10.0, 1); // Scaling factor for Charge
+
+    Serial.print("State of Charge (SoC): ");
+    Serial.println(telemetryData.SoC);
+
+    // Serial.print("Voltage Limit: ");
+    // Serial.println(telemetryData.VoltageLimit, 1);
+
+    // Serial.print("Current Limit: ");
+    // Serial.println(telemetryData.CurrentLimit, 1);
+
+    // Serial.print("Charge Contactor State: ");
+    // Serial.println(telemetryData.ChargeContactor ? "On" : "Off");
+
+    // Serial.print("Battery Contactor State: ");
+    // Serial.println(telemetryData.BatteryContactor ? "On" : "Off");
+
+    // Serial.print("Voltage LSW: ");
+    // Serial.println(telemetryData.VoltageLSW);
+
+    // Serial.print("Voltage MSW: ");
+    // Serial.println(telemetryData.VoltageMSW);
+
+    // Serial.print("Estimated Energy: ");
+    // Serial.println(telemetryData.EstimatedEnergy, 0);
+
+    // Serial.print("High Temperature Warning: ");
+    // Serial.println(telemetryData.HighTemperatureWarning ? "Yes" : "No");
+
+    // Serial.print("Custom Current Limit: ");
+    // Serial.println(telemetryData.CustomCurrentLimit);
 }
+
 
 void handleParameterCommand(String input) {
     if (input == "h" || input == CMD_HELP) {
