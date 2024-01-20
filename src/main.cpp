@@ -30,4 +30,7 @@ void setup() {
 
 void loop() {
     // Empty loop
+    // with yield() function
+    // to allow other tasks to run
+    yield();
 }

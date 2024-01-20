@@ -3,6 +3,8 @@
 #include "Semaphores.h"
 #include "driveTelemetry.h"
 #include "Timers.h"
+#include "DisplayTask.h"
+#include "GaugeControl.h"
 
 namespace {
     struct can_frame msg;
@@ -14,10 +16,15 @@ Telemetry telemetryData;
 bool monitorCAN = false;
 uint32_t filterCANID = 0;
 
+// Forward declarations
 void CanListenerTask(void * parameter);
 void IRAM_ATTR OnCanReceive();
 void LogCanMessage(const can_frame& msg);
 void HandleCanMessage(const can_frame& msg);
+void onMotorOff();
+void onMotorON();
+
+Timer motorTimer(1200, onMotorOff); // 1200 milliseconds timeout
 
 void initializeCANListenerTask() {
     canMessageSemaphore = xSemaphoreCreateCounting(10, 0);
@@ -34,9 +41,6 @@ void initializeCANListenerTask() {
     pinMode(MCP2515_INT_PIN, INPUT_PULLUP);
 
     xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 3, NULL);
-
-    // initialize a one-shot timer
-    Timer canHeartbeatTimer = Timer(1000, []()
 }
 
 void CanListenerTask(void * parameter) {
@@ -92,6 +96,18 @@ int CANMonitoring() {
     return monitorCAN;
 }
 
+void onMotorOff() {
+    // Implement what happens when the motor is considered "off"
+    Serial.println("Motor is off");
+}
+
+void onMotorON() {
+    // Implement what happens when the motor is considered "on"
+    Serial.println("Motor is on");
+    currentDisplayMode = READY;
+    sendStandbyCommand(true);
+}
+
 void HandleCanMessage(const can_frame& msg) {
     if (msg.can_id == 0x06) {
         // Motor temperature: (0 to 255) - 40 [C]
@@ -105,14 +121,17 @@ void HandleCanMessage(const can_frame& msg) {
         // Motor (DC) current: (0 to 65535) / 10 [A]
         telemetryData.DCCurrent = (int16_t)((msg.data[7] << 8) + msg.data[6]) / 10.0;
     } else if (msg.can_id == 0x07) {
+        // Motor is "on". Start or reset the timer.
+        if (!motorTimer.isRunning()) {
+            motorTimer.start();
+            onMotorON();
+        } else {
+            motorTimer.reset();
+        }
         telemetryData.powerUnitFlags = (msg.data[1] << 8) + msg.data[0];
     } else if (msg.can_id == 0x99B50500) {
         telemetryData.Current = (msg.data[0] << 8) + msg.data[1];
         telemetryData.Charge = (msg.data[2] << 8) + msg.data[3];
         telemetryData.SoC = msg.data[6];
-        // Serial.print("can_id: ");
-        // Serial.println(msg.can_id, HEX);
-        // Serial.print("soc: ");
-        // Serial.println(telemetryData.SoC);
     }
 }

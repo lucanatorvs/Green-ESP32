@@ -20,4 +20,13 @@
 // Button
 #define BUTTON_PIN 33
 
+// Buzzer
+#define BUZZER_PIN 14
+
+// door close sensor
+#define DOOR_CLOSE_SENSOR_PIN 39
+
+// ignition switch
+#define IGNITION_SWITCH_PIN 36
+
 #endif // PIN_ASSIGNMENTS_H
