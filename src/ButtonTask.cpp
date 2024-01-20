@@ -1,6 +1,7 @@
 #include "ButtonTask.h"
 #include "Semaphores.h"
 #include "PinAssignments.h"
+#include "PulseCounterTask.h"
 
 // function prototypes
 void buttonISR();
@@ -22,12 +23,9 @@ void initializeButtonTask() {
 
 void IRAM_ATTR buttonISR() {
     unsigned long currentTime = millis();
-    if ((currentTime - lastDebounceTime) > debounceDelay) {
-        // Only toggle the LED if the new button state is HIGH (button released)
+    if ((currentTime - lastDebounceTime) > debounceDelay) { // Check if debounce period has passed
         if (digitalRead(BUTTON_PIN) == HIGH) {
-            unsigned long pressDuration = currentTime - buttonPressTime;
-            buttonPressed = false;
-            xSemaphoreGiveFromISR(buttonSemaphore, NULL); // Use a semaphore to signal button release
+            xSemaphoreGiveFromISR(buttonSemaphore, NULL);
         } else {
             buttonPressTime = currentTime;
             buttonPressed = true;
@@ -39,17 +37,15 @@ void IRAM_ATTR buttonISR() {
 void ButtonTask(void * parameter) {
     for (;;) {
         if (xSemaphoreTake(buttonSemaphore, portMAX_DELAY) == pdTRUE) {
-            if (!buttonPressed) {
-                // Button released
-                unsigned long currentTime = millis();
-                unsigned long pressDuration = currentTime - buttonPressTime;
+            unsigned long currentTime = millis();
+            unsigned long pressDuration = currentTime - buttonPressTime;
+            if (buttonPressed && (pressDuration > debounceDelay)) {
                 if (pressDuration < 750) {
-                    // Serial.println("Short press detected");
+                    xSemaphoreGive(buttonStateSemaphore);
                 } else {
-                    // Serial.println("Long press detected");
+                    resetTripOdometer();
                 }
-                // increment semaphore count
-                xSemaphoreGive(buttonStateSemaphore);
+                buttonPressed = false;
             }
         }
     }

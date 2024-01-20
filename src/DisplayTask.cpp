@@ -39,6 +39,8 @@ void displayModeSwichTask(void * parameter) {
                 } else {
                     if (currentDisplayMode == EMPTY) {
                         currentDisplayMode = HELLO;
+                    } else  if (currentDisplayMode == HELLO) {
+                        currentDisplayMode = SOC;
                     } else {
                         currentDisplayMode = EMPTY;
                     }
@@ -68,6 +70,17 @@ void displayTask(void * parameter) {
                         display.drawStr(X1 + 3, Y1 + 20, "Hello World!");
                         // dyaplay the time from milis in seconds
                         display.drawStr(X1 + 3, Y1 + 32, String(millis() / 1000).c_str());
+                        break;
+                    case SOC:
+                        display.setFont(u8g2_font_6x12_tf);
+                        // draw SoC: telemetryData.SoC%
+                        display.drawStr(X1 + 3, Y1 + 20, "SoC: ");
+                        display.drawStr(X1 + 3 + display.getStrWidth("SoC: "), Y1 + 20, String(telemetryData.SoC).c_str());
+                        display.drawStr(X1 + 3 + display.getStrWidth("SoC: ") + display.getStrWidth(String(telemetryData.SoC).c_str()), Y1 + 20, "%");
+                        // next line is battery voltage
+                        display.drawStr(X1 + 3, Y1 + 32, "Vbat: ");
+                        display.drawStr(X1 + 3 + display.getStrWidth("Vbat: "), Y1 + 32, String(telemetryData.DCVoltage).c_str());
+                        display.drawStr(X1 + 3 + display.getStrWidth("Vbat: ") + display.getStrWidth(String(telemetryData.DCVoltage).c_str()), Y1 + 32, "V");
                         break;
                     case NOTIFICATION:
                         display.setFont(u8g2_font_6x12_tf);

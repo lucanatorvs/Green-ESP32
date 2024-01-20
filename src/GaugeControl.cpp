@@ -102,7 +102,7 @@ void gaugeAnimatingTask(void * parameter) {
 
     vTaskDelay(pdMS_TO_TICKS(300));
 
-    int iMax = 50;
+    int iMax = 30;
     for (int i = 0; i <= iMax; i++) {
         Chargeometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Chargeometer.getMinPosition(), Chargeometer.getMaxPosition()))));
         vTaskDelay(pdMS_TO_TICKS(2));

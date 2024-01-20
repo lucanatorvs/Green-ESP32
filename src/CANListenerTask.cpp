@@ -2,9 +2,11 @@
 #include "PinAssignments.h"
 #include "Semaphores.h"
 #include "driveTelemetry.h"
+#include "Timers.h"
 
 namespace {
     struct can_frame msg;
+    SemaphoreHandle_t canMessageSemaphore;
 }
 
 MCP2515 mcp2515(MCP2515_CS_PIN);  // Global MCP2515 object
@@ -13,39 +15,56 @@ bool monitorCAN = false;
 uint32_t filterCANID = 0;
 
 void CanListenerTask(void * parameter);
+void IRAM_ATTR OnCanReceive();
 void LogCanMessage(const can_frame& msg);
 void HandleCanMessage(const can_frame& msg);
 
 void initializeCANListenerTask() {
+    canMessageSemaphore = xSemaphoreCreateCounting(10, 0);
+
     if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
         mcp2515.reset();
         mcp2515.setBitrate(CAN_250KBPS, MCP_8MHZ);
         mcp2515.setNormalMode();
+        // enable both receive buffers to receive messages and interrupt on receive
         xSemaphoreGive(spiBusMutex);
     }
 
-    // pinMode(MCP2515_INT_PIN, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(MCP2515_INT_PIN), OnCanReceive, FALLING);
+    pinMode(MCP2515_INT_PIN, INPUT_PULLUP);
 
     xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 3, NULL);
+
+    // initialize a one-shot timer
+    Timer canHeartbeatTimer = Timer(1000, []()
 }
 
 void CanListenerTask(void * parameter) {
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(10)); // 100Hz polling rate
-        if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
-
-            auto readResult = mcp2515.readMessage(&msg);
-            if (readResult == MCP2515::ERROR_OK) {
-                LogCanMessage(msg);
-                HandleCanMessage(msg);
-            } else {
-                // Handle error
-                // Serial.print("Error: ");
-                // Serial.println(readResult);
+        vTaskDelay(pdMS_TO_TICKS(5)); // 500Hz polling rate
+        if (xSemaphoreTake(canMessageSemaphore, portMAX_DELAY) == pdTRUE) {
+            mcp2515.clearInterrupts();
+            if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
+                auto readResult = mcp2515.readMessage(&msg);
+                if (readResult == MCP2515::ERROR_OK) {
+                    LogCanMessage(msg);
+                    HandleCanMessage(msg);
+                } else {
+                    // Handle error
+                    // Serial.print("Error: ");
+                    // Serial.println(readResult);
+                }
+                xSemaphoreGive(spiBusMutex);
             }
-            xSemaphoreGive(spiBusMutex);
         }
-        // Serial.println(digitalRead(19));
+    }
+}
+
+void IRAM_ATTR OnCanReceive() {
+    BaseType_t higherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR(canMessageSemaphore, &higherPriorityTaskWoken);
+    if (higherPriorityTaskWoken) {
+        portYIELD_FROM_ISR();
     }
 }
 
