@@ -24,7 +24,7 @@ void HandleCanMessage(const can_frame& msg);
 void onMotorOff();
 void onMotorON();
 
-Timer motorTimer(1200, onMotorOff); // 1200 milliseconds timeout
+Timer motorTimer(4000, onMotorOff); // 1200 milliseconds timeout
 
 void initializeCANListenerTask() {
     canMessageSemaphore = xSemaphoreCreateCounting(10, 0);
@@ -40,7 +40,7 @@ void initializeCANListenerTask() {
     attachInterrupt(digitalPinToInterrupt(MCP2515_INT_PIN), OnCanReceive, FALLING);
     pinMode(MCP2515_INT_PIN, INPUT_PULLUP);
 
-    xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 3, NULL);
+    xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 1, NULL);
 }
 
 void CanListenerTask(void * parameter) {
@@ -49,7 +49,15 @@ void CanListenerTask(void * parameter) {
         if (xSemaphoreTake(canMessageSemaphore, portMAX_DELAY) == pdTRUE) {
             mcp2515.clearInterrupts();
             if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
+                // enter critical section
+                void taskENTER_CRITICAL( void );
+
                 auto readResult = mcp2515.readMessage(&msg);
+
+                // exit critical section
+                void taskEXIT_CRITICAL( void );
+
+                xSemaphoreGive(spiBusMutex);
                 if (readResult == MCP2515::ERROR_OK) {
                     LogCanMessage(msg);
                     HandleCanMessage(msg);
@@ -58,7 +66,6 @@ void CanListenerTask(void * parameter) {
                     // Serial.print("Error: ");
                     // Serial.println(readResult);
                 }
-                xSemaphoreGive(spiBusMutex);
             }
         }
     }
@@ -99,6 +106,8 @@ int CANMonitoring() {
 void onMotorOff() {
     // Implement what happens when the motor is considered "off"
     Serial.println("Motor is off");
+    currentDisplayMode = OFF;
+    sendStandbyCommand(false);
 }
 
 void onMotorON() {

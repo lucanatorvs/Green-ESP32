@@ -12,6 +12,7 @@ enum DisplayMode {
     EMPTY,
     HELLO,
     SOC,
+    SPEED,
     NOTIFICATION,
     READY,
     OFF

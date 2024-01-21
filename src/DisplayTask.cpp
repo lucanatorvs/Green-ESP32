@@ -41,6 +41,8 @@ void displayModeSwichTask(void * parameter) {
                         currentDisplayMode = HELLO;
                     } else  if (currentDisplayMode == HELLO) {
                         currentDisplayMode = SOC;
+                    } else if (currentDisplayMode == SOC) {
+                        currentDisplayMode = SPEED;
                     } else {
                         currentDisplayMode = EMPTY;
                     }
@@ -85,6 +87,16 @@ void displayTask(void * parameter) {
                     case NOTIFICATION:
                         display.setFont(u8g2_font_6x12_tf);
                         display.drawStr(X1 + 3, Y1 + 20, "Notification!");
+                        break;
+                    case SPEED:
+                        display.setFont(u8g2_font_6x12_tf);
+                        // draw speed: telemetryData.speed km/h
+                        display.drawStr(X1 + 3, Y1 + 20, "Speed: ");
+                        display.drawStr(X1 + 3 + display.getStrWidth("Speed: "), Y1 + 20, String(telemetryData.speed).c_str());
+                        display.drawStr(X1 + 3 + display.getStrWidth("Speed: ") + display.getStrWidth(String(telemetryData.speed).c_str()), Y1 + 20, "km/h");
+                        // next line is motor rpm
+                        display.drawStr(X1 + 3, Y1 + 32, "RPM: ");
+                        display.drawStr(X1 + 3 + display.getStrWidth("RPM: "), Y1 + 32, String(telemetryData.rpm).c_str());
                         break;
                     case READY:
                         display.setFont(u8g2_font_9x18_tf);

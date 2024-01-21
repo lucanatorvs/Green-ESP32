@@ -5,6 +5,7 @@
 
 // create a struct to hold the telemetry data
 struct Telemetry {
+    uint32_t speed;                 // (0-65535) 0 = 0 km/h, 65535 = 6553.5 km/h
     uint8_t motorTemp;              // (0-255) 0 = 40C, 255 = 295C
     uint8_t inverterTemp;           // (0-255) 0 = 40C, 255 = 295C
     uint16_t rpm;                   // (0-65535) 0 = 0 rpm, 65535 = 65535 rpm

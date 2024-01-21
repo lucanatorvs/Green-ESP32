@@ -1,12 +1,13 @@
 #include "GaugeControl.h"
 #include "driveTelemetry.h"
+#include "PulseCounterTask.h"
 
 // Instantiate the HardwareSerial
 HardwareSerial GaugeSerial(1);
 
 // Define the ranges for each gauge
 // minValue, maxValue, minAngle, maxAngle
-GaugeRange SpeedometerRange     (0, 200, 17, 254);
+GaugeRange SpeedometerRange     (0, 200, 17, 244);
 GaugeRange TachometerRange      (0, 9000, 4, 246);
 GaugeRange DynamometerRange     (-60, 90, 19, 144);
 GaugeRange ChargeometerRange    (0, 100, 11, 99);
@@ -20,7 +21,7 @@ Gauge Chargeometer  ("Chargeometer",    GaugeSerial, ChargeometerRange);
 Gauge Thermometer   ("Thermometer",     GaugeSerial, ThermometerRange);
 
 // variables
-bool autoUpdate = false;
+bool autoUpdate = true;
 
 // semaphore
 TaskHandle_t gaugeAnimatingTaskHandle = NULL;
@@ -34,7 +35,7 @@ void initializeGaugeControl() {
     GaugeSerial.begin(9600, SERIAL_8N1, GaugeRX, GaugeTX);
 
     // enable standby mode
-    sendStandbyCommand(false);
+    sendStandbyCommand(true);
     
     // set all gauges to 0 position
     Speedometer.setPosition(0);
@@ -84,6 +85,7 @@ void gaugeControlTask(void * parameter) {
             int Power = (telemetryData.DCCurrent * telemetryData.DCVoltage) / 1000; //KW
             Dynamometer.setPosition(Power);
             Chargeometer.setPosition(telemetryData.SoC);
+            Speedometer.setPosition(telemetryData.speed);
         }
         vTaskDelay(pdMS_TO_TICKS(100));
     }
