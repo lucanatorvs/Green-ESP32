@@ -8,7 +8,6 @@
 
 namespace {
     struct can_frame msg;
-    SemaphoreHandle_t canMessageSemaphore;
 }
 
 MCP2515 mcp2515(MCP2515_CS_PIN);  // Global MCP2515 object
@@ -18,64 +17,41 @@ uint32_t filterCANID = 0;
 
 // Forward declarations
 void CanListenerTask(void * parameter);
-void IRAM_ATTR OnCanReceive();
 void LogCanMessage(const can_frame& msg);
 void HandleCanMessage(const can_frame& msg);
 void onMotorOff();
 void onMotorON();
 
-Timer motorTimer(4000, onMotorOff); // 1200 milliseconds timeout
+Timer motorTimer(3200, onMotorOff); // 1200 milliseconds timeout
 
 void initializeCANListenerTask() {
-    canMessageSemaphore = xSemaphoreCreateCounting(10, 0);
-
     if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
         mcp2515.reset();
         mcp2515.setBitrate(CAN_250KBPS, MCP_8MHZ);
         mcp2515.setNormalMode();
-        // enable both receive buffers to receive messages and interrupt on receive
         xSemaphoreGive(spiBusMutex);
     }
 
-    attachInterrupt(digitalPinToInterrupt(MCP2515_INT_PIN), OnCanReceive, FALLING);
-    pinMode(MCP2515_INT_PIN, INPUT_PULLUP);
-
-    xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 1, NULL);
+    xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 2, NULL);
 }
 
 void CanListenerTask(void * parameter) {
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(5)); // 500Hz polling rate
-        if (xSemaphoreTake(canMessageSemaphore, portMAX_DELAY) == pdTRUE) {
-            mcp2515.clearInterrupts();
-            if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
-                // enter critical section
-                void taskENTER_CRITICAL( void );
+        vTaskDelay(pdMS_TO_TICKS(10)); // 100Hz polling rate
+        if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
 
-                auto readResult = mcp2515.readMessage(&msg);
-
-                // exit critical section
-                void taskEXIT_CRITICAL( void );
-
-                xSemaphoreGive(spiBusMutex);
-                if (readResult == MCP2515::ERROR_OK) {
-                    LogCanMessage(msg);
-                    HandleCanMessage(msg);
-                } else {
-                    // Handle error
-                    // Serial.print("Error: ");
-                    // Serial.println(readResult);
-                }
+            auto readResult = mcp2515.readMessage(&msg);
+            if (readResult == MCP2515::ERROR_OK) {
+                LogCanMessage(msg);
+                HandleCanMessage(msg);
+            } else {
+                // Handle error
+                // Serial.print("Error: ");
+                // Serial.println(readResult);
             }
+            xSemaphoreGive(spiBusMutex);
         }
-    }
-}
-
-void IRAM_ATTR OnCanReceive() {
-    BaseType_t higherPriorityTaskWoken = pdFALSE;
-    xSemaphoreGiveFromISR(canMessageSemaphore, &higherPriorityTaskWoken);
-    if (higherPriorityTaskWoken) {
-        portYIELD_FROM_ISR();
+        // Serial.println(digitalRead(19));
     }
 }
 
@@ -119,6 +95,16 @@ void onMotorON() {
 
 void HandleCanMessage(const can_frame& msg) {
     if (msg.can_id == 0x06) {
+        // kinda hacky, but it works
+        bool ignore = false;
+        for (int i = 0; i < msg.can_dlc; i++) {
+            if (msg.data[i] == 0xFF) {
+                ignore = true;
+                break;
+            }
+        }
+        if (ignore) return;
+
         // Motor temperature: (0 to 255) - 40 [C]
         telemetryData.motorTemp = msg.data[0] - 40;
         // Inverter temperature: (0 to 255) - 40 [C]
