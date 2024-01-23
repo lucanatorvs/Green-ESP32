@@ -93,10 +93,13 @@ void displayTask(void * parameter) {
                         // draw speed: telemetryData.speed km/h
                         display.drawStr(X1 + 3, Y1 + 20, "Speed: ");
                         display.drawStr(X1 + 3 + display.getStrWidth("Speed: "), Y1 + 20, String(telemetryData.speed).c_str());
-                        display.drawStr(X1 + 3 + display.getStrWidth("Speed: ") + display.getStrWidth(String(telemetryData.speed).c_str()), Y1 + 20, "km/h");
+                        display.drawStr(X1 + 3 + display.getStrWidth("Speed: ") + display.getStrWidth(String(telemetryData.speed).c_str()) + 1, Y1 + 20, "km/h");
                         // next line is motor rpm
                         display.drawStr(X1 + 3, Y1 + 32, "RPM: ");
                         display.drawStr(X1 + 3 + display.getStrWidth("RPM: "), Y1 + 32, String(telemetryData.rpm).c_str());
+                        // after the rpm, draw the furrent (right aligned)
+                        display.drawStr(X2 - display.getStrWidth(String(telemetryData.DCCurrent).c_str()) - 5, Y1 + 32, String(telemetryData.DCCurrent).c_str());
+                        display.drawStr(X2 - 3, Y1 + 32, "A");
                         break;
                     case READY:
                         display.setFont(u8g2_font_9x18_tf);
