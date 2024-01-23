@@ -81,7 +81,7 @@ bool getAutoUpdate() {
 void gaugeControlTask(void * parameter) {
     for (;;) {
         if (autoUpdate) {
-            Tachometer.setPosition(telemetryData.rpm);
+            Tachometer.setPosition(abs(telemetryData.rpm));
             int Power = (telemetryData.DCCurrent * telemetryData.DCVoltage) / 1000; //KW
             Dynamometer.setPosition(Power);
             Chargeometer.setPosition(telemetryData.SoC);
