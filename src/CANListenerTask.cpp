@@ -82,20 +82,26 @@ int CANMonitoring() {
 void onMotorOff() {
     // Implement what happens when the motor is considered "off"
     Serial.println("Motor is off");
-    currentDisplayMode = OFF;
-    sendStandbyCommand(false);
+    // if the mode is ready, chinge it to empty, otherwise, do nothing
+    if (currentDisplayMode == READY) {
+        currentDisplayMode = EMPTY;
+    }
+    // currentDisplayMode = OFF; // this line is for testing purposes
+    // sendStandbyCommand(false); // this line is for testing purposes
 }
 
 void onMotorON() {
     // Implement what happens when the motor is considered "on"
     Serial.println("Motor is on");
     currentDisplayMode = READY;
-    sendStandbyCommand(true);
+    // sendStandbyCommand(true); // this line is for testing purposes
 }
 
 void HandleCanMessage(const can_frame& msg) {
     if (msg.can_id == 0x06) {
         // kinda hacky, but it works
+        // some messages are wrong with all or some 0xFF data
+        // so we ignore those messages
         bool ignore = false;
         for (int i = 0; i < msg.can_dlc; i++) {
             if (msg.data[i] == 0xFF) {

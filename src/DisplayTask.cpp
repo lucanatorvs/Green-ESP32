@@ -4,6 +4,7 @@
 #include "PulseCounterTask.h"
 #include "Semaphores.h"
 #include "driveTelemetry.h"
+#include "GaugeControl.h"
 
 #define X1 4    // x coordinate of the top left corner of the odometer
 #define Y1 12   // y coordinate of the top left corner of the odometer
@@ -14,6 +15,7 @@ U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI display(U8G2_R0, DISPLAY_CHIP_SELECT_PIN
 
 void displayTask(void * parameter);
 void displayModeSwichTask(void * parameter);
+void turnOnTask(void * parameter);
 void drawOdometer();
 
 DisplayMode currentDisplayMode = EMPTY; // Global variable to keep track of the current display mode
@@ -21,13 +23,32 @@ DisplayMode currentDisplayMode = EMPTY; // Global variable to keep track of the 
 void initializeDisplayTask() {
     if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
         display.begin();
+        vTaskDelay(pdMS_TO_TICKS(50));
         display.enableUTF8Print();
 
         xSemaphoreGive(spiBusMutex);
     }
 
-    xTaskCreate(displayTask, "Display Task", 2048, NULL, 1, NULL);
+    xTaskCreate(displayTask, "Display Task", 4096, NULL, 1, NULL);
     xTaskCreate(displayModeSwichTask, "Display Mode Switch Task", 2048, NULL, 1, NULL);
+    xTaskCreate(turnOnTask, "Turn On Task", 2048, NULL,3, NULL);
+}
+
+void turnOnTask(void * parameter) {
+    // Set the pinmode for the IGNITION_SWITCH_PIN to input (not pullup)
+    pinMode(IGNITION_SWITCH_PIN, INPUT);
+    vTaskDelay(pdMS_TO_TICKS(200));
+    
+    for (;;) {
+        if (currentDisplayMode == OFF && digitalRead(IGNITION_SWITCH_PIN) == HIGH) {
+            currentDisplayMode = EMPTY;
+            sendStandbyCommand(true);
+        } else if (digitalRead(IGNITION_SWITCH_PIN) == LOW && currentDisplayMode != OFF) {
+            currentDisplayMode = OFF;
+            sendStandbyCommand(false);
+        }
+        vTaskDelay(pdMS_TO_TICKS(200));
+    }
 }
 
 void displayModeSwichTask(void * parameter) {
@@ -56,10 +77,16 @@ void displayTask(void * parameter) {
     for (;;) {
         if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
             if (currentDisplayMode != OFF) {
-                display.setPowerSave(0); // Turn on the display
+                // small delay to allow display to power up
+                vTaskDelay(pdMS_TO_TICKS(50));
+
+                // display.setPowerSave(0); // Turn on the display
+                // small delay to allow display to power up
+                vTaskDelay(pdMS_TO_TICKS(50));
+
                 display.enableUTF8Print();
                 display.clearBuffer();
-                // display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
+                display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
                 drawOdometer();
 
                 // Draw content based on the current display mode
@@ -69,7 +96,7 @@ void displayTask(void * parameter) {
                         break;
                     case HELLO:
                         display.setFont(u8g2_font_6x12_tf);
-                        display.drawStr(X1 + 3, Y1 + 20, "Hello World!");
+                        display.drawStr(X1 + 3, Y1 + 20, "Welcome");
                         // dyaplay the time from milis in seconds
                         display.drawStr(X1 + 3, Y1 + 32, String(millis() / 1000).c_str());
                         break;
@@ -98,17 +125,20 @@ void displayTask(void * parameter) {
                         display.drawStr(X1 + 3, Y1 + 32, "RPM: ");
                         display.drawStr(X1 + 3 + display.getStrWidth("RPM: "), Y1 + 32, String(telemetryData.rpm).c_str());
                         // after the rpm, draw the furrent (right aligned)
-                        display.drawStr(X2 - display.getStrWidth(String(telemetryData.DCCurrent).c_str()) - 5, Y1 + 32, String(telemetryData.DCCurrent).c_str());
-                        display.drawStr(X2 - 3, Y1 + 32, "A");
+                        display.drawStr(X2 - display.getStrWidth(String(telemetryData.DCCurrent).c_str()) - 10, Y1 + 32, String(telemetryData.DCCurrent).c_str());
+                        display.drawStr(X2 - 8, Y1 + 32, "A");
                         break;
                     case READY:
                         display.setFont(u8g2_font_9x18_tf);
-                        display.drawStr(X1 + (X2 - X1 - display.getStrWidth("Ready!")) / 2, Y1 + 27, "Ready!");
+                        display.drawStr(X1 + (X2 - X1 - display.getStrWidth("Ready")) / 2, Y1 + 27, "Ready");
                         break;
                 }
                 display.sendBuffer();
             } else {
-                display.setPowerSave(1); // Turn off the display
+                // display.setPowerSave(1); // Turn off the display
+                // clear and send the emty buffer
+                display.clearBuffer();
+                display.sendBuffer();
             }
             xSemaphoreGive(spiBusMutex);
             vTaskDelay(pdMS_TO_TICKS(100));
@@ -119,7 +149,7 @@ void displayTask(void * parameter) {
 void drawOdometer() {
     char buffer[20];  // Buffer to hold formatted strings
 
-        display.setFont(u8g2_font_6x12_tf);
+    display.setFont(u8g2_font_6x12_tf);
 
     // Draw odometer in the top left corner
     sprintf(buffer, "%d km", parameters[0].value);
