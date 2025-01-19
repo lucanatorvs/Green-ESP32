@@ -2,7 +2,7 @@
 #define CAN_LISTENER_TASK_H
 
 #include <Arduino.h>
-#include <mcp2515.h>
+#include <CAN.h>
 
 void initializeCANListenerTask();
 

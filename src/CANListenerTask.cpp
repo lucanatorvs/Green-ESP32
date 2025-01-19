@@ -6,30 +6,27 @@
 #include "DisplayTask.h"
 #include "GaugeControl.h"
 
-namespace {
-    struct can_frame msg;
-}
-
-MCP2515 mcp2515(MCP2515_CS_PIN);  // Global MCP2515 object
 Telemetry telemetryData;
 bool monitorCAN = false;
 uint32_t filterCANID = 0;
 
 // Forward declarations
 void CanListenerTask(void * parameter);
-void LogCanMessage(const can_frame& msg);
-void HandleCanMessage(const can_frame& msg);
+void LogCanMessage();
+void HandleCanMessage();
 void onMotorOff();
 void onMotorON();
 
-Timer motorTimer(3200, onMotorOff); // 1200 milliseconds timeout
+Timer motorTimer(3200, onMotorOff); // 3200 milliseconds timeout
 
 void initializeCANListenerTask() {
-    if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
-        mcp2515.reset();
-        mcp2515.setBitrate(CAN_250KBPS, MCP_8MHZ);
-        mcp2515.setNormalMode();
-        xSemaphoreGive(spiBusMutex);
+    // Set the pins for the built-in CAN controller
+    CAN.setPins(CAN_RX_PIN, CAN_TX_PIN);  // Use your defined RX and TX pins
+
+    // Initialize the built-in CAN controller at 250 kbps
+    if (!CAN.begin(250E3)) {
+        Serial.println("Starting CAN failed!");
+        return;
     }
 
     xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 2, NULL);
@@ -38,32 +35,26 @@ void initializeCANListenerTask() {
 void CanListenerTask(void * parameter) {
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(10)); // 100Hz polling rate
-        if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
 
-            auto readResult = mcp2515.readMessage(&msg);
-            if (readResult == MCP2515::ERROR_OK) {
-                LogCanMessage(msg);
-                HandleCanMessage(msg);
-            } else {
-                // Handle error
-                // Serial.print("Error: ");
-                // Serial.println(readResult);
-            }
-            xSemaphoreGive(spiBusMutex);
+        int packetSize = CAN.parsePacket();
+
+        if (packetSize) {
+            LogCanMessage();
+            HandleCanMessage();
         }
-        // Serial.println(digitalRead(19));
     }
 }
 
-void LogCanMessage(const can_frame& msg) {
-    if (monitorCAN && (filterCANID == 0 || msg.can_id == filterCANID)) {
+void LogCanMessage() {
+    if (monitorCAN && (filterCANID == 0 || CAN.packetId() == filterCANID)) {
         Serial.print("ID: ");
-        Serial.print(msg.can_id, HEX);
+        Serial.print(CAN.packetId(), HEX);
         Serial.print(" DLC: ");
-        Serial.print(msg.can_dlc);
+        Serial.print(CAN.packetDlc());
         Serial.print(" Data: ");
-        for (int i = 0; i < msg.can_dlc; i++) {
-            Serial.print(msg.data[i], HEX);
+        while (CAN.available()) {
+            uint8_t dataByte = CAN.read();
+            Serial.print(dataByte, HEX);
             Serial.print(" ");
         }
         Serial.println();
@@ -86,25 +77,28 @@ void onMotorOff() {
     if (currentDisplayMode == READY) {
         currentDisplayMode = EMPTY;
     }
-    // currentDisplayMode = OFF; // this line is for testing purposes
-    // sendStandbyCommand(false); // this line is for testing purposes
 }
 
 void onMotorON() {
     // Implement what happens when the motor is considered "on"
     Serial.println("Motor is on");
     currentDisplayMode = READY;
-    // sendStandbyCommand(true); // this line is for testing purposes
 }
 
-void HandleCanMessage(const can_frame& msg) {
-    if (msg.can_id == 0x06) {
-        // kinda hacky, but it works
-        // some messages are wrong with all or some 0xFF data
-        // so we ignore those messages
+void HandleCanMessage() {
+    uint32_t canId = CAN.packetId();
+    int dlc = CAN.packetDlc();
+
+    uint8_t msgData[8];
+    int index = 0;
+    while (CAN.available() && index < 8) {
+        msgData[index++] = CAN.read();
+    }
+
+    if (canId == 0x06) {
         bool ignore = false;
-        for (int i = 0; i < msg.can_dlc; i++) {
-            if (msg.data[i] == 0xFF) {
+        for (int i = 0; i < dlc; i++) {
+            if (msgData[i] == 0xFF) {
                 ignore = true;
                 break;
             }
@@ -112,16 +106,16 @@ void HandleCanMessage(const can_frame& msg) {
         if (ignore) return;
 
         // Motor temperature: (0 to 255) - 40 [C]
-        telemetryData.motorTemp = msg.data[0] - 40;
+        telemetryData.motorTemp = msgData[0] - 40;
         // Inverter temperature: (0 to 255) - 40 [C]
-        telemetryData.inverterTemp = msg.data[1] - 40;
+        telemetryData.inverterTemp = msgData[1] - 40;
         // Motor RPM: (0 to 65535) [RPM]
-        telemetryData.rpm = (msg.data[3] << 8) + msg.data[2];
+        telemetryData.rpm = (msgData[3] << 8) + msgData[2];
         // Motor (DC) voltage: (0 to 65535) / 10 [V]
-        telemetryData.DCVoltage = ((msg.data[5] << 8) + msg.data[4]) / 10.0;
+        telemetryData.DCVoltage = ((msgData[5] << 8) + msgData[4]) / 10.0;
         // Motor (DC) current: (0 to 65535) / 10 [A]
-        telemetryData.DCCurrent = (int16_t)((msg.data[7] << 8) + msg.data[6]) / 10.0;
-    } else if (msg.can_id == 0x07) {
+        telemetryData.DCCurrent = (int16_t)((msgData[7] << 8) + msgData[6]) / 10.0;
+    } else if (canId == 0x07) {
         // Motor is "on". Start or reset the timer.
         if (!motorTimer.isRunning()) {
             motorTimer.start();
@@ -129,10 +123,10 @@ void HandleCanMessage(const can_frame& msg) {
         } else {
             motorTimer.reset();
         }
-        telemetryData.powerUnitFlags = (msg.data[1] << 8) + msg.data[0];
-    } else if (msg.can_id == 0x99B50500) {
-        telemetryData.Current = (msg.data[0] << 8) + msg.data[1];
-        telemetryData.Charge = (msg.data[2] << 8) + msg.data[3];
-        telemetryData.SoC = msg.data[6];
+        telemetryData.powerUnitFlags = (msgData[1] << 8) + msgData[0];
+    } else if (canId == 0x99B50500) {
+        telemetryData.Current = (msgData[0] << 8) + msgData[1];
+        telemetryData.Charge = (msgData[2] << 8) + msgData[3];
+        telemetryData.SoC = msgData[6];
     }
 }

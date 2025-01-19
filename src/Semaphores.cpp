@@ -6,7 +6,7 @@ SemaphoreHandle_t buttonStateSemaphore = NULL;
 
 void createSemaphores() {
     // Create the SPI bus mutex before starting tasks
-    spiBusMutex = xSemaphoreCreateMutex();
+    spiBusMutex = xSemaphoreCreateMutex(); // this mutex is no longer needed, since the SPI bus is now only used in the display task
     buttonSemaphore = xSemaphoreCreateBinary();
     buttonStateSemaphore = xSemaphoreCreateCounting(2, 0);
     if (spiBusMutex == NULL) {
