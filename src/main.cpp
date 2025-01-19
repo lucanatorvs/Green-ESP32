@@ -21,7 +21,7 @@ void setup() {
     // Initialize tasks
     initializeTimerTask();          // priority 3
     initializeCLI();                // priority 2
-    initializeBlinkTask();          // priority 0
+    // initializeBlinkTask();          // priority 0
     initializeDisplayTask();        // priority 1
     initializePulseCounterTask();   // priority 2
     initializeCANListenerTask();    // priority 3
@@ -30,4 +30,7 @@ void setup() {
 
 void loop() {
     // Empty loop
+    // with yield() function
+    // to allow other tasks to run
+    yield();
 }

@@ -11,8 +11,11 @@ void initializeDisplayTask();
 enum DisplayMode {
     EMPTY,
     HELLO,
+    SOC,
+    SPEED,
     NOTIFICATION,
     READY,
+    Xmas,
     OFF
 };
 

@@ -1,16 +1,17 @@
 #include "GaugeControl.h"
 #include "driveTelemetry.h"
+#include "PulseCounterTask.h"
 
 // Instantiate the HardwareSerial
 HardwareSerial GaugeSerial(1);
 
 // Define the ranges for each gauge
 // minValue, maxValue, minAngle, maxAngle
-GaugeRange SpeedometerRange     (0, 200, 17, 254);
-GaugeRange TachometerRange      (0, 9000, 4, 246);
-GaugeRange DynamometerRange     (-60, 90, 19, 144);
-GaugeRange ChargeometerRange    (0, 100, 11, 99);
-GaugeRange ThermometerRange     (-20, 100, 11, 103);
+GaugeRange SpeedometerRange     (0, 200, 105, 344);
+GaugeRange TachometerRange      (0, 9000, 92, 335);
+GaugeRange DynamometerRange     (-60, 90, 107, 235);
+GaugeRange ChargeometerRange    (0, 100, 99, 191);
+GaugeRange ThermometerRange     (-20, 100, 99, 194);
 
 // Instantiate each gauge
 Gauge Speedometer   ("Speedometer",     GaugeSerial, SpeedometerRange);
@@ -20,7 +21,7 @@ Gauge Chargeometer  ("Chargeometer",    GaugeSerial, ChargeometerRange);
 Gauge Thermometer   ("Thermometer",     GaugeSerial, ThermometerRange);
 
 // variables
-bool autoUpdate = false;
+bool autoUpdate = true;
 
 // semaphore
 TaskHandle_t gaugeAnimatingTaskHandle = NULL;
@@ -34,7 +35,7 @@ void initializeGaugeControl() {
     GaugeSerial.begin(9600, SERIAL_8N1, GaugeRX, GaugeTX);
 
     // enable standby mode
-    sendStandbyCommand(false);
+    sendStandbyCommand(true);
     
     // set all gauges to 0 position
     Speedometer.setPosition(0);
@@ -80,9 +81,11 @@ bool getAutoUpdate() {
 void gaugeControlTask(void * parameter) {
     for (;;) {
         if (autoUpdate) {
-            Tachometer.setPosition(telemetryData.rpm);
-            int Power = telemetryData.DCCurrent * telemetryData.DCVoltage;
+            Tachometer.setPosition(abs(telemetryData.rpm));
+            int Power = (telemetryData.DCCurrent * telemetryData.DCVoltage) / 1000; //KW
             Dynamometer.setPosition(Power);
+            Chargeometer.setPosition(telemetryData.SoC);
+            Speedometer.setPosition(telemetryData.speed);
         }
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -101,43 +104,25 @@ void gaugeAnimatingTask(void * parameter) {
 
     vTaskDelay(pdMS_TO_TICKS(300));
 
-    int iMax = 50;
+    int iMax = 30;
     for (int i = 0; i <= iMax; i++) {
         Chargeometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Chargeometer.getMinPosition(), Chargeometer.getMaxPosition()))));
-        vTaskDelay(pdMS_TO_TICKS(2));
-    }
-    for (int i = 0; i <= iMax; i++) {
         Speedometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Speedometer.getMinPosition(), Speedometer.getMaxPosition()))));
-        vTaskDelay(pdMS_TO_TICKS(2));
-    }
-    for (int i = 0; i <= iMax; i++) {
         Tachometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Tachometer.getMinPosition(), Tachometer.getMaxPosition()))));
         Dynamometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Dynamometer.getMinPosition(), Dynamometer.getMaxPosition()))));
-        vTaskDelay(pdMS_TO_TICKS(2));
-    }
-    for (int i = 0; i <= iMax; i++) {
         Thermometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Thermometer.getMinPosition(), Thermometer.getMaxPosition()))));
         vTaskDelay(pdMS_TO_TICKS(2));
     }
 
     // short pause
-    vTaskDelay(pdMS_TO_TICKS(600));
+    vTaskDelay(pdMS_TO_TICKS(500));
 
     // reverse the animation
     for (int i = iMax; i >= 0; i--) {
         Thermometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Thermometer.getMinPosition(), Thermometer.getMaxPosition()))));
-        vTaskDelay(pdMS_TO_TICKS(2));
-    }
-    for (int i = iMax; i >= 0; i--) {
         Tachometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Tachometer.getMinPosition(), Tachometer.getMaxPosition()))));
         Dynamometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Dynamometer.getMinPosition(), Dynamometer.getMaxPosition()))));
-        vTaskDelay(pdMS_TO_TICKS(2));
-    }
-    for (int i = iMax; i >= 0; i--) {
         Speedometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Speedometer.getMinPosition(), Speedometer.getMaxPosition()))));
-        vTaskDelay(pdMS_TO_TICKS(2));
-    }
-    for (int i = iMax; i >= 0; i--) {
         Chargeometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Chargeometer.getMinPosition(), Chargeometer.getMaxPosition()))));
         vTaskDelay(pdMS_TO_TICKS(2));
     }

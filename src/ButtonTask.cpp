@@ -1,6 +1,7 @@
 #include "ButtonTask.h"
 #include "Semaphores.h"
 #include "PinAssignments.h"
+#include "PulseCounterTask.h"
 
 // function prototypes
 void buttonISR();
@@ -13,8 +14,8 @@ volatile unsigned long buttonPressTime = 0;
 
 void initializeButtonTask() {
     // Initialize button
-    pinMode(BUTTON_PIN, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonISR, CHANGE);
+    pinMode(BUTTONPIN, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(BUTTONPIN), buttonISR, CHANGE);
 
     // start task
     xTaskCreate(ButtonTask, "Button Task", 2048, NULL, 4, NULL);
@@ -22,12 +23,9 @@ void initializeButtonTask() {
 
 void IRAM_ATTR buttonISR() {
     unsigned long currentTime = millis();
-    if ((currentTime - lastDebounceTime) > debounceDelay) {
-        // Only toggle the LED if the new button state is HIGH (button released)
-        if (digitalRead(BUTTON_PIN) == HIGH) {
-            unsigned long pressDuration = currentTime - buttonPressTime;
-            buttonPressed = false;
-            xSemaphoreGiveFromISR(buttonSemaphore, NULL); // Use a semaphore to signal button release
+    if ((currentTime - lastDebounceTime) > debounceDelay) { // Check if debounce period has passed
+        if (digitalRead(BUTTONPIN) == HIGH) {
+            xSemaphoreGiveFromISR(buttonSemaphore, NULL);
         } else {
             buttonPressTime = currentTime;
             buttonPressed = true;
@@ -39,17 +37,15 @@ void IRAM_ATTR buttonISR() {
 void ButtonTask(void * parameter) {
     for (;;) {
         if (xSemaphoreTake(buttonSemaphore, portMAX_DELAY) == pdTRUE) {
-            if (!buttonPressed) {
-                // Button released
-                unsigned long currentTime = millis();
-                unsigned long pressDuration = currentTime - buttonPressTime;
+            unsigned long currentTime = millis();
+            unsigned long pressDuration = currentTime - buttonPressTime;
+            if (buttonPressed && (pressDuration > debounceDelay)) {
                 if (pressDuration < 750) {
-                    // Serial.println("Short press detected");
+                    xSemaphoreGive(buttonStateSemaphore);
                 } else {
-                    // Serial.println("Long press detected");
+                    resetTripOdometer();
                 }
-                // increment semaphore count
-                xSemaphoreGive(buttonStateSemaphore);
+                buttonPressed = false;
             }
         }
     }

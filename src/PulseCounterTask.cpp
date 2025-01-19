@@ -2,73 +2,74 @@
 #include "Parameter.h"
 #include "PinAssignments.h"
 #include <driver/pcnt.h>
+#include "driveTelemetry.h"
 
-#define PULSE_COUNTER_UNIT PCNT_UNIT_0
-#define PCNT_H_LIM_VAL 10000
-#define PULSEFILTER 100
-#define SAMPLE_SIZE 10
-
-volatile uint32_t frequency_buffer[SAMPLE_SIZE] = {0};
-volatile int frequency_buffer_index = 0;
+volatile uint32_t pulseCount = 0;
 volatile uint32_t speed = 0;
 volatile uint32_t accumulated_distance = 0;
 volatile uint32_t trip_distance = 0;
 
-pcnt_config_t pcnt_config = {
-    .pulse_gpio_num = PULSE_INPUT_PIN,
-    .ctrl_gpio_num = PCNT_PIN_NOT_USED,
-    .lctrl_mode = PCNT_MODE_KEEP,
-    .hctrl_mode = PCNT_MODE_KEEP,
-    .pos_mode = PCNT_COUNT_INC,
-    .neg_mode = PCNT_COUNT_DIS,
-    .counter_h_lim = PCNT_H_LIM_VAL,
-    .counter_l_lim = 0,
-    .unit = PULSE_COUNTER_UNIT,
-    .channel = PCNT_CHANNEL_0,
-};
-
 void calculate_speed_task(void *pvParameters);
+void pulse_reading_task(void *pvParameters);
 void checkAndIncrementOdometer();
 void checkAndResetTripOdometer();
 
 void initializePulseCounterTask() {
-    esp_err_t err = pcnt_unit_config(&pcnt_config);
-    if (err != ESP_OK) {
-        Serial.println("Error configuring pulse counter unit: " + String(esp_err_to_name(err)));
-    }
+    pinMode(PULSE_INPUT_PIN, INPUT);
 
-    err = pcnt_set_filter_value(PULSE_COUNTER_UNIT, PULSEFILTER);
-    if (err != ESP_OK) {
-        Serial.println("Error setting filter value: " + String(esp_err_to_name(err)));
-    }
+    xTaskCreate(pulse_reading_task, "PulseReadingTask", 2048, NULL, 1, NULL);
+    xTaskCreate(calculate_speed_task, "CalculateSpeedTask", 2048, NULL, 2, NULL);
+}
 
-    err = pcnt_filter_enable(PULSE_COUNTER_UNIT);
-    if (err != ESP_OK) {
-        Serial.println("Error enabling filter: " + String(esp_err_to_name(err)));
+void pulse_reading_task(void *pvParameters) {
+    bool lastState = digitalRead(PULSE_INPUT_PIN);
+    for (;;) {
+        bool currentState = digitalRead(PULSE_INPUT_PIN);
+        if (currentState != lastState) {
+            pulseCount++;
+            lastState = currentState;
+        }
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
-
-    xTaskCreate(calculate_speed_task, "Calculate Speed", 1000, NULL, 2, NULL);
 }
 
 void calculate_speed_task(void *pvParameters) {
-    for (;;) {
-        int PulseDelay = parameters[2].value;
-        int PulseDistance = parameters[3].value; // Distance in mm per pulse
-        int16_t count;
-        pcnt_get_counter_value(PULSE_COUNTER_UNIT, &count);
+    TickType_t lastTime = xTaskGetTickCount(); // Initial time in ticks
+    float alpha = 0.1; // Smoothing factor for EMA, adjust as needed
+    float smoothedPulseCount = 0; // EMA of pulse count
 
-        uint32_t distance = count * PulseDistance; // distance in mm
+    for (;;) {
+        int PulseDistance = parameters[3].value; // Distance in mm per pulse
+
+        // Update the smoothed pulse count with an exponential moving average
+        smoothedPulseCount = alpha * pulseCount + (1 - alpha) * smoothedPulseCount;
+        pulseCount = 0; // Reset the pulse count for the next period
+
+        uint32_t distance = smoothedPulseCount * PulseDistance; // distance in mm
+
         accumulated_distance += distance;
         trip_distance += distance;
 
         checkAndIncrementOdometer();
         checkAndResetTripOdometer();
 
-        uint32_t local = distance * 1000 / PulseDelay; // speed in mm/s
-        speed = local * 36 / 100000; // speed in km/h
+        TickType_t currentTime = xTaskGetTickCount();
+        TickType_t elapsedTime = currentTime - lastTime; // Elapsed time in ticks
+        lastTime = currentTime; // Update lastTime for the next cycle
 
-        pcnt_counter_clear(PULSE_COUNTER_UNIT);
-        vTaskDelay(PulseDelay / portTICK_PERIOD_MS);
+        // Convert elapsed time from ticks to milliseconds
+        uint32_t elapsedTimeMs = (elapsedTime * 1000) / configTICK_RATE_HZ;
+
+        // Calculate speed
+        uint32_t local = 0;
+        if (elapsedTimeMs > 0) {
+            local = distance * 1000 / elapsedTimeMs; // speed in mm/s
+        }
+        speed = local * 36 / 10000; // speed in km/h
+
+        telemetryData.speed = speed;
+
+        vTaskDelay(pdMS_TO_TICKS(parameters[2].value));
     }
 }
 
