@@ -15,6 +15,7 @@ enum DisplayMode {
     SPEED,
     NOTIFICATION,
     READY,
+    Xmas,
     OFF
 };
 

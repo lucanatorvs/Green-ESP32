@@ -14,8 +14,8 @@ volatile unsigned long buttonPressTime = 0;
 
 void initializeButtonTask() {
     // Initialize button
-    pinMode(BUTTON_PIN, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonISR, CHANGE);
+    pinMode(BUTTONPIN, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(BUTTONPIN), buttonISR, CHANGE);
 
     // start task
     xTaskCreate(ButtonTask, "Button Task", 2048, NULL, 4, NULL);
@@ -24,7 +24,7 @@ void initializeButtonTask() {
 void IRAM_ATTR buttonISR() {
     unsigned long currentTime = millis();
     if ((currentTime - lastDebounceTime) > debounceDelay) { // Check if debounce period has passed
-        if (digitalRead(BUTTON_PIN) == HIGH) {
+        if (digitalRead(BUTTONPIN) == HIGH) {
             xSemaphoreGiveFromISR(buttonSemaphore, NULL);
         } else {
             buttonPressTime = currentTime;

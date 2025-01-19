@@ -31,7 +31,7 @@ void initializeDisplayTask() {
 
     xTaskCreate(displayTask, "Display Task", 4096, NULL, 1, NULL);
     xTaskCreate(displayModeSwichTask, "Display Mode Switch Task", 2048, NULL, 1, NULL);
-    xTaskCreate(turnOnTask, "Turn On Task", 2048, NULL,3, NULL);
+    // xTaskCreate(turnOnTask, "Turn On Task", 2048, NULL,3, NULL);
 }
 
 void turnOnTask(void * parameter) {
@@ -130,7 +130,7 @@ void displayTask(void * parameter) {
                         break;
                     case READY:
                         display.setFont(u8g2_font_9x18_tf);
-                        display.drawStr(X1 + (X2 - X1 - display.getStrWidth("Ready")) / 2, Y1 + 27, "Ready");
+                        display.drawStr(X1 + (X2 - X1 - display.getStrWidth("Ready!")) / 2, Y1 + 27, "Ready!");
                         break;
                 }
                 display.sendBuffer();
