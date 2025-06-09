@@ -217,6 +217,12 @@ void handleInfoCommand() {
         case HELLO:
             Serial.println("HELLO");
             break;
+        case SOC:
+            Serial.println("SOC");
+            break;
+        case SPEED:
+            Serial.println("SPEED");
+            break;
         case NOTIFICATION:
             Serial.println("NOTIFICATION");
             break;
@@ -239,63 +245,163 @@ void handleInfoCommand() {
 void printTelemetryData(){
     Serial.println("Telemetry Data:");
 
-    Serial.print("Motor Temperature: ");
+    Serial.print("Speed: ........................ ");
+    Serial.println(telemetryData.speed / 10.0, 1);
+
+    Serial.print("Motor Temperature: ............ ");
     Serial.println(telemetryData.motorTemp);
 
-    Serial.print("Inverter Temperature: ");
+    Serial.print("Inverter Temperature: ......... ");
     Serial.println(telemetryData.inverterTemp);
 
-    Serial.print("Motor RPM: ");
+    Serial.print("Motor RPM: .................... ");
     Serial.println(telemetryData.rpm);
 
-    Serial.print("Motor DC Voltage: ");
+    Serial.print("Motor DC Voltage: ............. ");
     Serial.println(telemetryData.DCVoltage, 1); // 2 decimal places for float
 
-    Serial.print("Motor DC Current: ");
+    Serial.print("Motor DC Current: ............. ");
     Serial.println(telemetryData.DCCurrent, 1); // 2 decimal places for float
 
-    Serial.print("Power Unit Flags: ");
+    Serial.print("Power Unit Flags: ............. ");
     String binaryString = String(telemetryData.powerUnitFlags, BIN);
     while (binaryString.length() < 16) {
         binaryString = "0" + binaryString;
     }
     Serial.println(binaryString);
 
-    // Serial.print("Current: ");
-    // Serial.println(telemetryData.Current / 10.0, 1); // Scaling factor for Current
+    Serial.print("BMS Input Signal Flags: ....... ");
+    binaryString = String(telemetryData.BMSInputSignalFlags, BIN);
+    while (binaryString.length() < 8) {
+        binaryString = "0" + binaryString;
+    }
+    Serial.println(binaryString);
 
-    // Serial.print("Charge: ");
-    // Serial.println(telemetryData.Charge / 10.0, 1); // Scaling factor for Charge
+    Serial.print("BMS Output Signal Flags: ...... ");
+    binaryString = String(telemetryData.BMSOutputSignalFlags, BIN);
+    while (binaryString.length() < 8) {
+        binaryString = "0" + binaryString;
+    }
+    Serial.println(binaryString);
 
-    Serial.print("State of Charge (SoC): ");
-    Serial.println(telemetryData.SoC);
+    Serial.print("BMS Number of Cells: .......... ");
+    Serial.println(telemetryData.BMSNumberOfCells);
 
-    // Serial.print("Voltage Limit: ");
-    // Serial.println(telemetryData.VoltageLimit, 1);
 
-    // Serial.print("Current Limit: ");
-    // Serial.println(telemetryData.CurrentLimit, 1);
+    Serial.print("BMS Charging State: ........... ");
+    switch (telemetryData.BMSChargingState) {
+        case 0:
+            Serial.println("Disconnected");
+            break;
+        case 1:
+            Serial.println("Pre-heat");
+            break;
+        case 2:
+            Serial.println("Pre-charge");
+            break;
+        case 3:
+            Serial.println("Charging");
+            break;
+        case 4:
+            Serial.println("Balancing");
+            break;
+        case 5:
+            Serial.println("Finished");
+            break;
+        case 6:
+            Serial.println("Error");
+            break;
+        default:
+            Serial.println("Unknown");
+            break;
+    }
 
-    // Serial.print("Charge Contactor State: ");
-    // Serial.println(telemetryData.ChargeContactor ? "On" : "Off");
+    Serial.print("BMS Charging State Duration: .. ");
+    Serial.print(telemetryData.BMSCsDuration);
+    Serial.println(" minutes");
 
-    // Serial.print("Battery Contactor State: ");
-    // Serial.println(telemetryData.BatteryContactor ? "On" : "Off");
+    Serial.print("BMS Last Charging Error: ...... ");
+    switch (telemetryData.BMSLastChargingError) {
+        case 0:
+            Serial.println("No error");
+            break;
+        case 1:
+            Serial.println("No cell comm. at start/precharge (CAN charger)");
+            break;
+        case 2:
+            Serial.println("No cell comm. (Non-CAN charger)");
+            break;
+        case 3:
+            Serial.println("Max charging stage duration expired");
+            break;
+        case 4:
+            Serial.println("Cell comm. lost during charging/balancing (CAN charger)");
+            break;
+        case 5:
+            Serial.println("Cannot set balancing threshold");
+            break;
+        case 6:
+            Serial.println("Cell/module temp too high");
+            break;
+        case 7:
+            Serial.println("Cell comm. lost during pre-heating (CAN charger)");
+            break;
+        case 8:
+            Serial.println("Cell count mismatch");
+            break;
+        case 9:
+            Serial.println("Cell over-voltage");
+            break;
+        case 10:
+            Serial.println("Cell protection event (see diagnostic codes)");
+            break;
+        default:
+            Serial.println("Unknown");
+            break;
+    }
 
-    // Serial.print("Voltage LSW: ");
-    // Serial.println(telemetryData.VoltageLSW);
+    Serial.print("BMS Protection Flags: ......... ");
+    binaryString = String(telemetryData.BMSProtectionFlags, BIN);
+    while (binaryString.length() < 32) {
+        binaryString = "0" + binaryString;
+    }
+    Serial.println(binaryString);
 
-    // Serial.print("Voltage MSW: ");
-    // Serial.println(telemetryData.VoltageMSW);
+    Serial.print("BMS Reduction Flags: .......... ");
+    binaryString = String(telemetryData.BMSReductionFlags, BIN);
+    while (binaryString.length() < 8) {
+        binaryString = "0" + binaryString;
+    }
+    Serial.println(binaryString);
 
-    // Serial.print("Estimated Energy: ");
-    // Serial.println(telemetryData.EstimatedEnergy, 0);
+    Serial.print("BMS Battery Status Flags: ..... ");
+    binaryString = String(telemetryData.BMSBatteryStatusFlags, BIN);
+    while (binaryString.length() < 8) {
+        binaryString = "0" + binaryString;
+    }
+    Serial.println(binaryString);
 
-    // Serial.print("High Temperature Warning: ");
-    // Serial.println(telemetryData.HighTemperatureWarning ? "Yes" : "No");
+    Serial.print("BMS Minimum Module Temperature: ");
+    Serial.println(telemetryData.BMSMinModuleTemp);
+    Serial.print("BMS Maximum Module Temperature: ");
+    Serial.println(telemetryData.BMSMaxModuleTemp);
+    Serial.print("BMS Average Module Temperature: ");
+    Serial.println(telemetryData.BMSAverageModuleTemp);
+    Serial.print("BMS Minimum Cell Temperature: . ");
+    Serial.println(telemetryData.BMSMinCellTemp);
+    Serial.print("BMS Maximum Cell Temperature: . ");
+    Serial.println(telemetryData.BMSMaxCellTemp);
+    Serial.print("BMS Average Cell Temperature: . ");
+    Serial.println(telemetryData.BMSAverageCellTemp);
 
-    // Serial.print("Custom Current Limit: ");
-    // Serial.println(telemetryData.CustomCurrentLimit);
+    Serial.print("BMS Current: ................ ");
+    Serial.println(telemetryData.Current / 10.0, 1);
+
+    Serial.print("BMS Charge: .................. ");
+    Serial.print(telemetryData.Charge / 10.0, 1);
+
+    Serial.print("BMS State of Charge (SoC): ... ");
+    Serial.println(telemetryData.SoC / 100.0, 2);
 }
 
 

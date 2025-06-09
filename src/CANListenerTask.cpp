@@ -29,6 +29,10 @@ void initializeCANListenerTask() {
         return;
     }
 
+    // Accept both standard and extended frames
+    CAN.filter(0, 0);  // This will accept all IDs
+    CAN.onReceive(NULL);  // Clear any existing filters
+
     xTaskCreate(CanListenerTask, "CAN Listener Task", 2048, NULL, 2, NULL);
 }
 
@@ -96,6 +100,7 @@ void HandleCanMessage() {
     }
 
     if (canId == 0x06) {
+        // check if the message is valid
         bool ignore = false;
         for (int i = 0; i < dlc; i++) {
             if (msgData[i] == 0xFF) {
@@ -115,6 +120,7 @@ void HandleCanMessage() {
         telemetryData.DCVoltage = ((msgData[5] << 8) + msgData[4]) / 10.0;
         // Motor (DC) current: (0 to 65535) / 10 [A]
         telemetryData.DCCurrent = (int16_t)((msgData[7] << 8) + msgData[6]) / 10.0;
+
     } else if (canId == 0x07) {
         // Motor is "on". Start or reset the timer.
         if (!motorTimer.isRunning()) {
@@ -124,9 +130,46 @@ void HandleCanMessage() {
             motorTimer.reset();
         }
         telemetryData.powerUnitFlags = (msgData[1] << 8) + msgData[0];
-    } else if (canId == 0x99B50500) {
-        telemetryData.Current = (msgData[0] << 8) + msgData[1];
-        telemetryData.Charge = (msgData[2] << 8) + msgData[3];
-        telemetryData.SoC = msgData[6];
+
+    } else if ((canId & 0xFFFF0000) == 0x99B50000) {
+        // Handel EMUS messages (0x99B5xxxx)
+        uint16_t canAddr = canId & 0xFFFF;
+        switch (canAddr) {
+            case 0x0000:
+                // Handle 0x99B50000 Overall Parameters
+                telemetryData.BMSInputSignalFlags = msgData[0];
+                telemetryData.BMSOutputSignalFlags = msgData[1];
+                telemetryData.BMSNumberOfCells = (msgData[2] << 8) + msgData[7];
+                telemetryData.BMSChargingState = msgData[3];
+                telemetryData.BMSCsDuration = (msgData[4] << 8) + msgData[5];
+                telemetryData.BMSLastChargingError = msgData[6];
+                break;
+            case 0x0007:
+                // Handle 0x99B50007 Diagnostics Codes
+                telemetryData.BMSProtectionFlags = (msgData[3] << 24) + (msgData[2] << 16) + (msgData[1] << 8) + msgData[0];
+                telemetryData.BMSReductionFlags = msgData[4];
+                telemetryData.BMSBatteryStatusFlags = msgData[7];
+                break;
+            case 0x0002:
+                // Handle 0x99B50002 Cell Module Temperature Overall Parameters
+                telemetryData.BMSMinModTemp = msgData[0] - 100; // Convert to Celsius
+                telemetryData.BMSMaxModTemp = msgData[1] - 100; // Convert to Celsius
+                telemetryData.BMSAverageModTemp = msgData[2] - 100; // Convert to Celsius
+                break;
+            case 0x0008:
+                // Handle 0x99B50008 Cell Temperature Overall Parameters
+                telemetryData.BMSMinCellTemp = msgData[0] - 100; // Convert to Celsius
+                telemetryData.BMSMaxCellTemp = msgData[1] - 100; // Convert to Celsius
+                telemetryData.BMSAverageCellTemp = msgData[2] - 100; // Convert to Celsius
+                break;
+            case 0x0500:
+                // Handle 0x99B50500 State of Charge parameters
+                telemetryData.Current = (msgData[0] << 8) + msgData[1];
+                telemetryData.Charge = (msgData[2] << 8) + msgData[3];
+                telemetryData.SoC = (msgData[5] << 8) + msgData[6];
+                break;
+            default:
+                break;
+        }
     }
 }

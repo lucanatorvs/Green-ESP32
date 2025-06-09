@@ -86,6 +86,8 @@ void gaugeControlTask(void * parameter) {
             Dynamometer.setPosition(Power);
             Chargeometer.setPosition(telemetryData.SoC);
             Speedometer.setPosition(telemetryData.speed);
+            int maxTemp = max(telemetryData.motorTemp, telemetryData.inverterTemp);
+            Thermometer.setPosition(maxTemp);
         }
         vTaskDelay(pdMS_TO_TICKS(100));
     }

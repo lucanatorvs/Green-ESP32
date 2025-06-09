@@ -105,7 +105,7 @@ void displayTask(void * parameter) {
                         // draw SoC: telemetryData.SoC%
                         display.drawStr(X1 + 3, Y1 + 20, "SoC: ");
                         display.drawStr(X1 + 3 + display.getStrWidth("SoC: "), Y1 + 20, String(telemetryData.SoC).c_str());
-                        display.drawStr(X1 + 3 + display.getStrWidth("SoC: ") + display.getStrWidth(String(telemetryData.SoC).c_str()), Y1 + 20, "%");
+                        display.drawStr(X1 + 3 + display.getStrWidth("SoC: ") + display.getStrWidth(String(telemetryData.SoC).c_str()) + 1, Y1 + 20, "%");
                         // next line is battery voltage
                         display.drawStr(X1 + 3, Y1 + 32, "Vbat: ");
                         display.drawStr(X1 + 3 + display.getStrWidth("Vbat: "), Y1 + 32, String(telemetryData.DCVoltage).c_str());
