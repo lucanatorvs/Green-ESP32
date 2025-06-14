@@ -2,7 +2,7 @@
 #define CAN_LISTENER_TASK_H
 
 #include <Arduino.h>
-#include <CAN.h>
+#include <ESP32-TWAI-CAN.hpp>
 
 void initializeCANListenerTask();
 

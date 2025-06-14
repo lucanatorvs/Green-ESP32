@@ -2,7 +2,7 @@
 #include "Parameter.h"
 #include "PulseCounterTask.h"
 #include "GaugeControl.h"
-#include "semaphores.h"
+#include "Semaphores.h"
 #include "DisplayTask.h"
 #include "CANListenerTask.h"
 #include "driveTelemetry.h"
@@ -382,11 +382,11 @@ void printTelemetryData(){
     Serial.println(binaryString);
 
     Serial.print("BMS Minimum Module Temperature: ");
-    Serial.println(telemetryData.BMSMinModuleTemp);
+    Serial.println(telemetryData.BMSMinModTemp);
     Serial.print("BMS Maximum Module Temperature: ");
-    Serial.println(telemetryData.BMSMaxModuleTemp);
+    Serial.println(telemetryData.BMSMaxModTemp);
     Serial.print("BMS Average Module Temperature: ");
-    Serial.println(telemetryData.BMSAverageModuleTemp);
+    Serial.println(telemetryData.BMSAverageModTemp);
     Serial.print("BMS Minimum Cell Temperature: . ");
     Serial.println(telemetryData.BMSMinCellTemp);
     Serial.print("BMS Maximum Cell Temperature: . ");
@@ -394,16 +394,15 @@ void printTelemetryData(){
     Serial.print("BMS Average Cell Temperature: . ");
     Serial.println(telemetryData.BMSAverageCellTemp);
 
-    Serial.print("BMS Current: ................ ");
+    Serial.print("BMS Current: .................. ");
     Serial.println(telemetryData.Current / 10.0, 1);
 
-    Serial.print("BMS Charge: .................. ");
-    Serial.print(telemetryData.Charge / 10.0, 1);
+    Serial.print("BMS Charge: ................... ");
+    Serial.println(telemetryData.Charge / 10.0, 1);
 
-    Serial.print("BMS State of Charge (SoC): ... ");
+    Serial.print("BMS State of Charge (SoC): .... ");
     Serial.println(telemetryData.SoC / 100.0, 2);
 }
-
 
 void handleParameterCommand(String input) {
     if (input == "h" || input == CMD_HELP) {
