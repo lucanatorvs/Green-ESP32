@@ -5,6 +5,7 @@
 #include "Timers.h"
 #include "DisplayTask.h"
 #include "GaugeControl.h"
+#include "OTA.h" // Include OTA.h to get access to SerialBT
 
 Telemetry telemetryData;
 bool monitorCAN = false;
@@ -27,7 +28,7 @@ void sendCANFrame(uint32_t identifier, bool extd, uint8_t dlc, uint8_t* data) {
 
 // Forward declarations
 void CanListenerTask(void * parameter);
-void LogCanMessage();
+void LogCanMessage(Stream &stream);
 void HandleCanMessage();
 void onMotorOff();
 void onMotorON();
@@ -53,25 +54,28 @@ void CanListenerTask(void * parameter) {
 
         // Try to read a CAN frame with a timeout of 1ms
         if(ESP32Can.readFrame(rxFrame, 1)) {
-            LogCanMessage();
+            if (monitorCAN && (filterCANID == 0 || rxFrame.identifier == filterCANID)) {
+                LogCanMessage(Serial);  // Log to hardware Serial
+                if (isBTConnected()) {  // If Bluetooth is connected, also log there
+                    LogCanMessage(SerialBT);
+                }
+            }
             HandleCanMessage();
         }
     }
 }
 
-void LogCanMessage() {
-    if (monitorCAN && (filterCANID == 0 || rxFrame.identifier == filterCANID)) {
-        Serial.print("ID: ");
-        Serial.print(rxFrame.identifier, HEX);
-        Serial.print(" DLC: ");
-        Serial.print(rxFrame.data_length_code);
-        Serial.print(" Data: ");
-        for (int i = 0; i < rxFrame.data_length_code; i++) {
-            Serial.print(rxFrame.data[i], HEX);
-            Serial.print(" ");
-        }
-        Serial.println();
+void LogCanMessage(Stream &stream) {
+    stream.print("ID: ");
+    stream.print(rxFrame.identifier, HEX);
+    stream.print(" DLC: ");
+    stream.print(rxFrame.data_length_code);
+    stream.print(" Data: ");
+    for (int i = 0; i < rxFrame.data_length_code; i++) {
+        stream.print(rxFrame.data[i], HEX);
+        stream.print(" ");
     }
+    stream.println();
 }
 
 void setCANMonitoring(bool state, uint32_t filterID) {
@@ -86,7 +90,11 @@ int CANMonitoring() {
 void onMotorOff() {
     // Implement what happens when the motor is considered "off"
     Serial.println("Motor is off");
-    // if the mode is ready, chinge it to empty, otherwise, do nothing
+    if (isBTConnected()) {
+        SerialBT.println("Motor is off");
+    }
+    
+    // if the mode is ready, change it to empty, otherwise, do nothing
     if (currentDisplayMode == READY) {
         currentDisplayMode = EMPTY;
     }
@@ -95,6 +103,10 @@ void onMotorOff() {
 void onMotorON() {
     // Implement what happens when the motor is considered "on"
     Serial.println("Motor is on");
+    if (isBTConnected()) {
+        SerialBT.println("Motor is on");
+    }
+    
     currentDisplayMode = READY;
 }
 

@@ -6,4 +6,7 @@
 // Initialize CLI
 void initializeCLI();
 
+// Process input for CLI
+void handleInput(String input, Stream &stream);
+
 #endif // CLI_H
