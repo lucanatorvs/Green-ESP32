@@ -86,7 +86,7 @@ void displayTask(void * parameter) {
 
                 display.enableUTF8Print();
                 display.clearBuffer();
-                display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
+                // display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
                 drawOdometer();
 
                 // Draw content based on the current display mode
