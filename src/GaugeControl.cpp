@@ -31,6 +31,10 @@ void gaugeControlTask(void * parameter);
 void gaugeAnimatingTask(void * parameter);
 
 void initializeGaugeControl() {
+    // initialize the GPIO pins for the lamps
+    pinMode(TEMPERATURE_Lamp_PIN, OUTPUT);
+    pinMode(SOC_Lamp_PIN, OUTPUT);
+
     // Initialize the serial communication for gauges
     GaugeSerial.begin(9600, SERIAL_8N1, GaugeRX, GaugeTX);
 
@@ -67,6 +71,10 @@ void sendStandbyCommand(bool enable) {
         Dynamometer.setPosition(Dynamometer.getMinPosition());
         Chargeometer.setPosition(Chargeometer.getMinPosition());
         Thermometer.setPosition(Thermometer.getMinPosition());
+
+        // turn off the lamps
+        digitalWrite(SOC_Lamp_PIN, LOW); // Turn off SOC lamp
+        digitalWrite(TEMPERATURE_Lamp_PIN, LOW); // Turn off temperature lamp
     }
 }
 
@@ -89,10 +97,20 @@ void gaugeControlTask(void * parameter) {
             int8_t maxTempMotor = max(telemetryData.motorTemp, telemetryData.inverterTemp);
             int8_t maxTemp = max(maxTempMotor, telemetryData.BMSMaxModTemp);
             int gaugeTemp = max(maxTemp, telemetryData.BMSMaxCellTemp);
-            if (telemetryData.BMSMinCellTemp <= 0) {
+            if (telemetryData.BMSMinCellTemp <= 2) {
                 gaugeTemp = telemetryData.BMSMinCellTemp;
             }
-            Thermometer.setPosition(maxTemp);
+            Thermometer.setPosition(gaugeTemp);
+            if (telemetryData.SoC < 20) {
+                digitalWrite(SOC_Lamp_PIN, HIGH); // Turn on SOC lamp if SoC is below 20%
+            } else {
+                digitalWrite(SOC_Lamp_PIN, LOW); // Turn off SOC lamp
+            }
+            if (gaugeTemp > 70) {
+                digitalWrite(TEMPERATURE_Lamp_PIN, HIGH); // Turn on temperature lamp if gauge temperature is above 60C
+            } else {
+                digitalWrite(TEMPERATURE_Lamp_PIN, LOW); // Turn off temperature lamp
+            }
         }
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -109,9 +127,9 @@ void gaugeAnimatingTask(void * parameter) {
     Chargeometer.setPosition(Chargeometer.getMinPosition());
     Thermometer.setPosition(Thermometer.getMinPosition());
 
-    vTaskDelay(pdMS_TO_TICKS(300));
+    vTaskDelay(pdMS_TO_TICKS(200));
 
-    int iMax = 30;
+    int iMax = 20;
     for (int i = 0; i <= iMax; i++) {
         Chargeometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Chargeometer.getMinPosition(), Chargeometer.getMaxPosition()))));
         Speedometer.setPosition(static_cast<int>(ceil(map(i, 0, iMax, Speedometer.getMinPosition(), Speedometer.getMaxPosition()))));

@@ -48,5 +48,6 @@ void ButtonTask(void * parameter) {
                 buttonPressed = false;
             }
         }
+        vTaskDelay(pdMS_TO_TICKS(10)); // Polling delay to avoid busy-waiting
     }
 }

@@ -24,6 +24,7 @@ struct Telemetry {
 
     // CAN ID 0x07
     uint16_t powerUnitFlags;        // Bitmask of power unit status flags
+    uint16_t motorFlags;            // Bitmask of motor status flags
 
     // CAN ID [EMUS] 0x99B5 0x00 0x00
     uint8_t BMSInputSignalFlags;    // Bitmask of BMS input signal flags
@@ -53,6 +54,12 @@ struct Telemetry {
     uint16_t Charge;                // (0-65535) 0 = 0 Ah, 65535 = 6553.5 Ah
     uint16_t SoC;                   // (0-65535) 0 = 0%, 10000 = 100% (int/100 scale)
 
+    // CAN ID [EMUS] 0x06 0x00
+    uint16_t BMSConsumptionEstimate;
+    uint16_t BMSEstimatedEnergy;
+    uint16_t BMSEstimatedDistanceLeft;
+    uint16_t BMSDistanceTraveled;
+
 };
 
 // powerUnitFlags bitmask:
@@ -70,6 +77,8 @@ struct Telemetry {
 // bit 11: Hydraulics are enabled
 // bit 12: Powering is enabled
 // bit 13: Powering is ready
+
+// motorFlags bitmask:
 
 // BMSInputSignalFlags bitmask:
 // bit 0: Ignition Key, 1 = ignition is on

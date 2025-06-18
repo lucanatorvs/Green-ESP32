@@ -5,7 +5,7 @@
 #include "Timers.h"
 #include "DisplayTask.h"
 #include "GaugeControl.h"
-#include "OTA.h" // Include OTA.h to get access to SerialBT
+#include "Bluetooth.h" // Include Bluetooth.h to get access to SerialBT
 
 Telemetry telemetryData;
 bool monitorCAN = false;
@@ -32,10 +32,15 @@ void LogCanMessage(Stream &stream);
 void HandleCanMessage();
 void onMotorOff();
 void onMotorON();
+void onReadyOff();
 
-Timer motorTimer(3200, onMotorOff); // 3200 milliseconds timeout
+Timer motorTimer(500, onMotorOff); // 500 milliseconds timeout
+Timer readyTimer(5000, onReadyOff); // 5000 milliseconds timeout
 
 void initializeCANListenerTask() {
+
+    // Initialize the running lamp pin
+    pinMode(RUNNIG_Lamp_PIN, OUTPUT);
 
     // Initialize the CAN controller at 250 kbps
     if(ESP32Can.begin(ESP32Can.convertSpeed(250), CAN_TX_PIN, CAN_RX_PIN, 10, 10)) {
@@ -45,7 +50,7 @@ void initializeCANListenerTask() {
         return;
     }
 
-    xTaskCreate(CanListenerTask, "CAN Listener Task", 4096 * 8, NULL, 1, NULL);
+    xTaskCreate(CanListenerTask, "CAN Listener Task", 4096 * 8, NULL, 2, NULL);
 }
 
 void CanListenerTask(void * parameter) {
@@ -93,11 +98,15 @@ void onMotorOff() {
     if (isBTConnected()) {
         SerialBT.println("Motor is off");
     }
+
+    digitalWrite(RUNNIG_Lamp_PIN, LOW); // Turn off the running lamp
     
     // if the mode is ready, change it to empty, otherwise, do nothing
     if (currentDisplayMode == READY) {
         currentDisplayMode = EMPTY;
     }
+    readyTimer.stop(); // Stop the ready timer
+    readyTimer.reset(); // Reset the ready timer
 }
 
 void onMotorON() {
@@ -106,8 +115,18 @@ void onMotorON() {
     if (isBTConnected()) {
         SerialBT.println("Motor is on");
     }
+
+    digitalWrite(RUNNIG_Lamp_PIN, HIGH); // Turn on the running lamp
     
     currentDisplayMode = READY;
+    readyTimer.start(); // Start the ready timer
+}
+
+void onReadyOff() {
+    // If the mode is ready, change it to empty, otherwise, do nothing
+    if (currentDisplayMode == READY) {
+        currentDisplayMode = START;
+    }
 }
 
 void HandleCanMessage() {
@@ -137,16 +156,18 @@ void HandleCanMessage() {
         // Motor (DC) current: (0 to 65535) / 10 [A]
         telemetryData.DCCurrent = (int16_t)((msgData[7] << 8) + msgData[6]) / 10.0;
 
-    } else if (canId == 0x07) {
+    } else if (canId == 0x42) {
         // Motor is "on". Start or reset the timer.
-        if (!motorTimer.isRunning()) {
-            motorTimer.start();
-            onMotorON();
-        } else {
-            motorTimer.reset();
+        if (msgData[2] == 0) {
+            if (!motorTimer.isRunning()) {
+                motorTimer.start();
+                onMotorON();
+            } else {
+                motorTimer.reset();
+            }
         }
         telemetryData.powerUnitFlags = (msgData[1] << 8) + msgData[0];
-
+        telemetryData.motorFlags = (msgData[3] << 8) + msgData[2];
     } else if ((canId & 0xFFFF0000) == 0x19B50000) {
         // Handel EMUS messages (0x19B5xxxx)
         uint16_t canAddr = canId & 0xFFFF;
@@ -184,6 +205,12 @@ void HandleCanMessage() {
                 telemetryData.Charge = (msgData[2] << 8) + msgData[3];
                 telemetryData.SoC = (msgData[5] << 8) + msgData[6];
                 break;
+            case 0x0600:
+                // Handle 0x99B50600 Energy Parameters
+                telemetryData.BMSConsumptionEstimate = (msgData[0] << 8) + msgData[1];
+                telemetryData.BMSEstimatedEnergy = (msgData[2] << 8) + msgData[3];
+                telemetryData.BMSEstimatedDistanceLeft = (msgData[4] << 8) + msgData[5];
+                telemetryData.BMSDistanceTraveled = (msgData[6] << 8) + msgData[7];
             default:
                 break;
         }

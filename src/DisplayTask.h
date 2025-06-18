@@ -11,7 +11,7 @@ void initializeDisplayTask();
 // Keep this list updated with CLI.cpp, and DisplayTask.cpp
 enum DisplayMode {
     EMPTY,
-    HELLO,
+    START,
     SOC,
     SPEED,
     NOTIFICATION,

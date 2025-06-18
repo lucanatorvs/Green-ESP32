@@ -9,7 +9,7 @@
 #include "GaugeControl.h"
 #include "ButtonTask.h"
 #include "Timers.h"
-#include "OTA.h"
+#include "Bluetooth.h"
 
 void setup() {
     // Initialize semaphores
@@ -27,7 +27,8 @@ void setup() {
     initializePulseCounterTask();   // priority 2
     initializeCANListenerTask();    // priority 3
     initializeButtonTask();         // priority 4
-    initializeOTA();                // priority 1
+    initializeBluetooth();          // priority 1
+
 }
 
 void loop() {

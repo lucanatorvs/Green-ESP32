@@ -6,14 +6,8 @@
 #include "DisplayTask.h"
 #include "CANListenerTask.h"
 #include "driveTelemetry.h"
-#include "OTA.h"
+#include "Bluetooth.h"
 #include <Preferences.h>
-
-// WiFi namespace constants from OTA.cpp
-#define WIFI_NAMESPACE "wifi"
-#define WIFI_SSID_KEY "ssid"
-#define WIFI_PASS_KEY "password"
-#define WIFI_ENABLED_KEY "enabled"
 
 // Predefine commands as constants for consistency and easy modification
 const String CMD_HELP = "help";
@@ -26,7 +20,6 @@ const String CMD_RESET = "reset";
 const String CMD_GAUGE = "g";
 const String CMD_START_MONITOR = "canmonitor";
 const String CMD_STOP_MONITOR = "stopmonitor";
-const String CMD_WIFI = "wifi";
 
 // Command descriptions
 const String HELP_TEXT = "Available commands:\n"
@@ -43,8 +36,7 @@ const String HELP_TEXT = "Available commands:\n"
                          "  canmonitor [id]         - Starts monitoring CAN messages. Type 'canmonitor help' for more info.\n"
                          "  stopmonitor             - Stops monitoring CAN messages.\n"
                          "  telemetry               - Displays the telemetry data.\n"
-                         "  g [gauge_name] [pos]    - Gauge command. Type 'g help' for more information.\n"
-                         "  wifi [subcommand]       - WiFi command. Type 'wifi help' for more information.";
+                         "  g [gauge_name] [pos]    - Gauge command. Type 'g help' for more information.";
 
 
 const String PARAM_HELP_TEXT = "Usage: p [index] [value] | p update [index] | p clear [index]\n"
@@ -66,15 +58,6 @@ const String GAUGE_HELP_TEXT = "Usage: g [gauge_name] [position]\n"
                                "  position: Position to set for the gauge\n"
                                "  Example: 'g Speedometer 50' sets the Speedometer to 50km/h\n";
 
-const String WIFI_HELP_TEXT = "Usage: wifi [subcommand]\n"
-                              "  subcommand: status   - Shows WiFi connection status\n"
-                              "  subcommand: restart  - Restarts WiFi connection\n"
-                              "  subcommand: on       - Enables WiFi\n"
-                              "  subcommand: off      - Disables WiFi\n"
-                              "  subcommand: ssid <name>     - Sets the WiFi SSID\n"
-                              "  subcommand: password <pass> - Sets the WiFi password\n"
-                              "  subcommand: help     - Shows this help message\n";
-
 
 void cliTask(void * parameter);
 void processCharacter(char ch, String &input, Stream &stream);
@@ -84,7 +67,6 @@ void handleSpeedCommand(Stream &stream);
 void handleInfoCommand(Stream &stream);
 void handleTripCommand(String input, Stream &stream);
 void handleGaugeCommand(String input, Stream &stream);
-void handleWiFiCommand(String input, Stream &stream);
 void printTelemetryData(Stream &stream);
 
 void initializeCLI() {
@@ -174,7 +156,7 @@ void handleInput(String input, Stream &stream) {
     } else if (input.startsWith(CMD_START_MONITOR)) {
         if (input == CMD_START_MONITOR + " h" || input == CMD_START_MONITOR + " help") {
             stream.println("Usage: canmonitor [id]\n"
-                           "  id: CAN ID to filter for (optional)");
+                          "  id: CAN ID to filter for (optional)");
             return;
         } else {
             String idStr = input.substring(CMD_START_MONITOR.length());
@@ -191,10 +173,6 @@ void handleInput(String input, Stream &stream) {
     } else if (input == CMD_STOP_MONITOR) {
         setCANMonitoring(false);
         stream.println("CAN monitoring stopped.");
-    } else if (input.startsWith(CMD_WIFI)) {
-        String wifiInput = input.substring(CMD_WIFI.length());
-        wifiInput.trim(); // Trim the wifi input
-        handleWiFiCommand(wifiInput, stream);
     } else {
         stream.println("Unknown command. Type 'help' for a list of commands.");
     }
@@ -252,8 +230,8 @@ void handleInfoCommand(Stream &stream) {
         case EMPTY:
             stream.println("EMPTY");
             break;
-        case HELLO:
-            stream.println("HELLO");
+        case START:
+            stream.println("START");
             break;
         case SOC:
             stream.println("SOC");
@@ -279,13 +257,17 @@ void handleInfoCommand(Stream &stream) {
     stream.print("Auto Update: ");
     stream.println(getAutoUpdate() ? "ON" : "OFF");
     
-    // WiFi status
-    stream.print("WiFi Status: ");
-    stream.println(getWiFiStatusString());
-    
     // Bluetooth status
     stream.print("Bluetooth Connected: ");
     stream.println(isBTConnected() ? "Yes" : "No");
+
+    // Display the state of the digital input pin digitalRead(IGNITION_SWITCH_PIN)
+    stream.print("Ignition Switch State: ");
+    if (digitalRead(IGNITION_SWITCH_PIN) == HIGH) {
+        stream.println("ON");
+    } else {
+        stream.println("OFF");
+    }
 }
 
 void printTelemetryData(Stream &stream) {
@@ -317,6 +299,13 @@ void printTelemetryData(Stream &stream) {
     }
     stream.println(binaryString);
 
+    stream.print("Motor Flags: .................. ");
+    binaryString = String(telemetryData.motorFlags, BIN);
+    while (binaryString.length() < 16) {
+        binaryString = "0" + binaryString;
+    }
+    stream.println(binaryString);
+
     stream.print("BMS Input Signal Flags: ....... ");
     binaryString = String(telemetryData.BMSInputSignalFlags, BIN);
     while (binaryString.length() < 8) {
@@ -333,7 +322,6 @@ void printTelemetryData(Stream &stream) {
 
     stream.print("BMS Number of Cells: .......... ");
     stream.println(telemetryData.BMSNumberOfCells);
-
 
     stream.print("BMS Charging State: ........... ");
     switch (telemetryData.BMSChargingState) {
@@ -597,89 +585,5 @@ void handleGaugeCommand(String input, Stream &stream) {
         }
 
         stream.println("Gauge " + gaugeName + " set to position " + positionStr + ".");
-    }
-}
-
-void handleWiFiCommand(String input, Stream &stream) {
-    if (input == "h" || input == "help") {
-        stream.println(WIFI_HELP_TEXT);
-    } else if (input == "status") {
-        stream.println("WiFi Status: " + getWiFiStatusString());
-        stream.println("WiFi Enabled: " + String(isWiFiEnabled() ? "Yes" : "No"));
-        
-        // Show SSID if available
-        String ssid = getWiFiSSID();
-        if (ssid.length() > 0) {
-            stream.println("SSID: " + ssid);
-        } else {
-            stream.println("SSID: Not set");
-        }
-    } else if (input == "restart") {
-        stream.println("Restarting WiFi connection...");
-        bool result = startWiFi();
-        if (result) {
-            stream.println("WiFi restarted successfully.");
-        } else {
-            stream.println("WiFi restart failed. Check your WiFi parameters.");
-        }
-    } else if (input == "on") {
-        stream.println("Enabling WiFi...");
-        bool result = setWiFiEnabled(true);
-        if (result) {
-            stream.println("WiFi enabled successfully.");
-        } else {
-            stream.println("Failed to enable WiFi. Check your WiFi parameters.");
-        }
-    } else if (input == "off") {
-        stream.println("Disabling WiFi...");
-        bool result = setWiFiEnabled(false);
-        if (result) {
-            stream.println("WiFi disabled successfully.");
-        } else {
-            stream.println("Failed to disable WiFi.");
-        }
-    } else if (input.startsWith("ssid ")) {
-        String ssid = input.substring(5); // Extract the SSID after "ssid "
-        ssid.trim();
-        
-        if (ssid.length() == 0) {
-            stream.println("Error: SSID cannot be empty");
-            return;
-        }
-        
-        // Store current password
-        String currentPassword = "";
-        Preferences preferences;
-        preferences.begin(WIFI_NAMESPACE, true); // Read-only mode
-        currentPassword = preferences.getString(WIFI_PASS_KEY, "");
-        preferences.end();
-        
-        // Set the new SSID with existing password
-        bool result = setWiFiCredentials(ssid, currentPassword);
-        if (result) {
-            stream.println("WiFi SSID set to: " + ssid);
-        } else {
-            stream.println("Failed to set WiFi SSID");
-        }
-    } else if (input.startsWith("password ")) {
-        String password = input.substring(9); // Extract the password after "password "
-        password.trim();
-        
-        // Get current SSID
-        String currentSSID = getWiFiSSID();
-        if (currentSSID.length() == 0) {
-            stream.println("Error: SSID not set. Please set SSID first using 'wifi ssid <name>'");
-            return;
-        }
-        
-        // Set the SSID with new password
-        bool result = setWiFiCredentials(currentSSID, password);
-        if (result) {
-            stream.println("WiFi password set successfully");
-        } else {
-            stream.println("Failed to set WiFi password");
-        }
-    } else {
-        stream.println("Error: Invalid WiFi command. Type 'wifi help' for more information.");
     }
 }

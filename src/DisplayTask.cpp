@@ -5,6 +5,7 @@
 #include "Semaphores.h"
 #include "driveTelemetry.h"
 #include "GaugeControl.h"
+#include "Bluetooth.h"
 
 #define X1 4    // x coordinate of the top left corner of the odometer
 #define Y1 12   // y coordinate of the top left corner of the odometer
@@ -21,6 +22,8 @@ void drawOdometer();
 DisplayMode currentDisplayMode = EMPTY; // Global variable to keep track of the current display mode
 
 void initializeDisplayTask() {
+    pinMode(BATTERY_Lamp_PIN, OUTPUT);
+
     if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
         display.begin();
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -30,8 +33,8 @@ void initializeDisplayTask() {
     }
 
     xTaskCreate(displayTask, "Display Task", 4096, NULL, 1, NULL);
-    xTaskCreate(displayModeSwichTask, "Display Mode Switch Task", 2048, NULL, 1, NULL);
-    // xTaskCreate(turnOnTask, "Turn On Task", 2048, NULL,3, NULL);
+    xTaskCreate(displayModeSwichTask, "Display Mode Switch Task", 2048, NULL, 2, NULL);
+    xTaskCreate(turnOnTask, "Turn On Task", 2048, NULL,3, NULL);
 }
 
 void turnOnTask(void * parameter) {
@@ -39,11 +42,18 @@ void turnOnTask(void * parameter) {
     pinMode(IGNITION_SWITCH_PIN, INPUT);
     vTaskDelay(pdMS_TO_TICKS(200));
     
+    // Define analog threshold value - adjust as needed based on testing
+    const int ANALOG_THRESHOLD = 500; // Using 500 as a starting threshold (0-4095 range)
+    
     for (;;) {
-        if (currentDisplayMode == OFF && digitalRead(IGNITION_SWITCH_PIN) == HIGH) {
+        // Read the analog value of the pin
+        int analogValue = analogRead(IGNITION_SWITCH_PIN);
+        
+        // Use the analog value with a threshold to determine state
+        if (currentDisplayMode == OFF && analogValue > ANALOG_THRESHOLD) {
             currentDisplayMode = EMPTY;
             sendStandbyCommand(true);
-        } else if (digitalRead(IGNITION_SWITCH_PIN) == LOW && currentDisplayMode != OFF) {
+        } else if (analogValue <= ANALOG_THRESHOLD && currentDisplayMode != OFF) {
             currentDisplayMode = OFF;
             sendStandbyCommand(false);
         }
@@ -59,8 +69,8 @@ void displayModeSwichTask(void * parameter) {
                     currentDisplayMode = EMPTY; // Dismiss the notification
                 } else {
                     if (currentDisplayMode == EMPTY) {
-                        currentDisplayMode = HELLO;
-                    } else  if (currentDisplayMode == HELLO) {
+                        currentDisplayMode = START;
+                    } else  if (currentDisplayMode == START) {
                         currentDisplayMode = SOC;
                     } else if (currentDisplayMode == SOC) {
                         currentDisplayMode = SPEED;
@@ -70,6 +80,7 @@ void displayModeSwichTask(void * parameter) {
                 }
             }
         }
+        vTaskDelay(pdMS_TO_TICKS(200)); // Polling delay to avoid busy-waiting
     }
 }
 
@@ -82,7 +93,7 @@ void displayTask(void * parameter) {
 
                 // display.setPowerSave(0); // Turn on the display
                 // small delay to allow display to power up
-                vTaskDelay(pdMS_TO_TICKS(50));
+                // vTaskDelay(pdMS_TO_TICKS(50));
 
                 display.enableUTF8Print();
                 display.clearBuffer();
@@ -94,12 +105,22 @@ void displayTask(void * parameter) {
                     case EMPTY:
                         // Nothing to draw in this mode
                         break;
-                    case HELLO:
+                    case START:
+                    {
                         display.setFont(u8g2_font_6x12_tf);
-                        display.drawStr(X1 + 3, Y1 + 20, "Welcome");
-                        // dyaplay the time from milis in seconds
-                        display.drawStr(X1 + 3, Y1 + 32, String(millis() / 1000).c_str());
+                        // draw Range
+                        // Format BMSEstimatedDistanceLeft (in 0.01 km units) as "xxx.xx"
+                        char rangeBuffer[16];
+                        int rangeInt = telemetryData.BMSEstimatedDistanceLeft / 100;
+                        display.drawStr(X1 + 3, Y1 + 20, "Range: ");
+                        display.drawStr(X1 + 3 + display.getStrWidth("Range: "), Y1 + 20, String(rangeInt).c_str());
+                        display.drawStr(X1 + 3 + display.getStrWidth("Range: ") + display.getStrWidth(rangeBuffer) + 4, Y1 + 20, "km");
+                        // next line is Usage
+                        display.drawStr(X1 + 3, Y1 + 32, "Usage: ");
+                        display.drawStr(X1 + 3 + display.getStrWidth("Usage: "), Y1 + 32, String(telemetryData.BMSConsumptionEstimate).c_str());
+                        display.drawStr(X1 + 3 + display.getStrWidth("Usage: ") + display.getStrWidth(String(telemetryData.BMSConsumptionEstimate).c_str()) + 4, Y1 + 32, "Wh/km");
                         break;
+                    }
                     case SOC:
                         display.setFont(u8g2_font_6x12_tf);
                         // draw SoC: telemetryData.SoC%
@@ -142,6 +163,11 @@ void displayTask(void * parameter) {
             }
             xSemaphoreGive(spiBusMutex);
             vTaskDelay(pdMS_TO_TICKS(100));
+        }
+        if (telemetryData.BMSChargingState != 0) {
+            digitalWrite(BATTERY_Lamp_PIN, HIGH); // Turn on the battery lamp if charging
+        } else {
+            digitalWrite(BATTERY_Lamp_PIN, LOW); // Turn off the battery lamp if not charging
         }
     }
 }
