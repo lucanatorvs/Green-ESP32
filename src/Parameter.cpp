@@ -1,13 +1,31 @@
 #include "Parameter.h"
 #include <nvs_flash.h>
 #include <Preferences.h>
+#ifdef ENABLE_BLUETOOTH
 #include "BluetoothSerial.h"
+#endif
 
 // Forward declare functions and variables from OTA
 extern bool isBTConnected();
+#ifdef ENABLE_BLUETOOTH
 extern BluetoothSerial SerialBT;
+#endif
 
 Preferences preferences;
+
+// Helper function to print to both Serial and SerialBT
+void printToAll(const String& message, Stream* output = nullptr) {
+    if (output) {
+        output->println(message);
+    } else {
+        Serial.println(message);
+#ifdef ENABLE_BLUETOOTH
+        if (isBTConnected()) {
+            SerialBT.println(message);
+        }
+#endif
+    }
+}
 
 Parameter parameters[] = {
     // index, name, defaultValue, value     // unit
@@ -40,11 +58,7 @@ void setParameter(int index, int value, Stream *output) {
         if (output) {
             output->println("Set " + parameters[index].name + " to " + String(value));
         } else {
-            Serial.println("Set " + parameters[index].name + " to " + String(value));
-            // Also output to Bluetooth if connected
-            if (isBTConnected()) {
-                SerialBT.println("Set " + parameters[index].name + " to " + String(value));
-            }
+            printToAll("Set " + parameters[index].name + " to " + String(value));
         }
         
         storeParametersToNVS();
@@ -52,10 +66,7 @@ void setParameter(int index, int value, Stream *output) {
         if (output) {
             output->println("Invalid index");
         } else {
-            Serial.println("Invalid index");
-            if (isBTConnected()) {
-                SerialBT.println("Invalid index");
-            }
+            printToAll("Invalid index");
         }
     }
 }
@@ -65,19 +76,13 @@ void getParameter(int index, Stream *output) {
         if (output) {
             output->println(String(index) + ": " + parameters[index].name + " = " + String(parameters[index].value));
         } else {
-            Serial.println(String(index) + ": " + parameters[index].name + " = " + String(parameters[index].value));
-            if (isBTConnected()) {
-                SerialBT.println(String(index) + ": " + parameters[index].name + " = " + String(parameters[index].value));
-            }
+            printToAll(String(index) + ": " + parameters[index].name + " = " + String(parameters[index].value));
         }
     } else {
         if (output) {
             output->println("Invalid index");
         } else {
-            Serial.println("Invalid index");
-            if (isBTConnected()) {
-                SerialBT.println("Invalid index");
-            }
+            printToAll("Invalid index");
         }
     }
 }
@@ -94,10 +99,7 @@ void storeParametersToNVS(int index) {
         preferences.putInt(parameters[index].name.c_str(), parameters[index].value);
     } else {
         // Error case: invalid index
-        Serial.println("Error: Invalid index");
-        if (isBTConnected()) {
-            SerialBT.println("Error: Invalid index");
-        }
+        printToAll("Error: Invalid index");
     }
     preferences.end();
 }
@@ -114,10 +116,7 @@ void clearNVS(int index, Stream *output) {
         if (output) {
             output->println("NVS cleared, default values restored");
         } else {
-            Serial.println("NVS cleared, default values restored");
-            if (isBTConnected()) {
-                SerialBT.println("NVS cleared, default values restored");
-            }
+            printToAll("NVS cleared, default values restored");
         }
     } else if (index >= 0 && index < numParameters) {
         // Clear specified parameter
@@ -127,19 +126,13 @@ void clearNVS(int index, Stream *output) {
         if (output) {
             output->println("Parameter " + String(index) + " (" + parameters[index].name + ") cleared, default value (" + String(parameters[index].defaultValue) + ") restored");
         } else {
-            Serial.println("Parameter " + String(index) + " (" + parameters[index].name + ") cleared, default value (" + String(parameters[index].defaultValue) + ") restored");
-            if (isBTConnected()) {
-                SerialBT.println("Parameter " + String(index) + " (" + parameters[index].name + ") cleared, default value (" + String(parameters[index].defaultValue) + ") restored");
-            }
+            printToAll("Parameter " + String(index) + " (" + parameters[index].name + ") cleared, default value (" + String(parameters[index].defaultValue) + ") restored");
         }
     } else {
         if (output) {
             output->println("Error: Invalid index");
         } else {
-            Serial.println("Error: Invalid index");
-            if (isBTConnected()) {
-                SerialBT.println("Error: Invalid index");
-            }
+            printToAll("Error: Invalid index");
         }
     }
     preferences.end();
@@ -157,10 +150,7 @@ void updateParametersFromNVS(int index, Stream *output) {
         if (output) {
             output->println("Parameters updated from NVS");
         } else {
-            Serial.println("Parameters updated from NVS");
-            if (isBTConnected()) {
-                SerialBT.println("Parameters updated from NVS");
-            }
+            printToAll("Parameters updated from NVS");
         }
     } else if (index >= 0 && index < numParameters) {
         // Update specified parameter
@@ -169,19 +159,13 @@ void updateParametersFromNVS(int index, Stream *output) {
         if (output) {
             output->println("Parameter " + String(index) + " (" + parameters[index].name + ") updated from NVS");
         } else {
-            Serial.println("Parameter " + String(index) + " (" + parameters[index].name + ") updated from NVS");
-            if (isBTConnected()) {
-                SerialBT.println("Parameter " + String(index) + " (" + parameters[index].name + ") updated from NVS");
-            }
+            printToAll("Parameter " + String(index) + " (" + parameters[index].name + ") updated from NVS");
         }
     } else {
         if (output) {
             output->println("Error: Invalid index");
         } else {
-            Serial.println("Error: Invalid index");
-            if (isBTConnected()) {
-                SerialBT.println("Error: Invalid index");
-            }
+            printToAll("Error: Invalid index");
         }
     }
     preferences.end();

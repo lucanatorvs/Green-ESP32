@@ -10,6 +10,7 @@
 #include "ButtonTask.h"
 #include "Timers.h"
 #include "Bluetooth.h"
+#include "HelperTasks.h"
 
 void setup() {
     // Initialize semaphores
@@ -28,6 +29,7 @@ void setup() {
     initializeCANListenerTask();    // priority 3
     initializeButtonTask();         // priority 4
     initializeBluetooth();          // priority 1
+    initializeHelperTasks();         // priority 3
 
 }
 

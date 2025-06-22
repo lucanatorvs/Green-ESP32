@@ -1,6 +1,7 @@
 #include "GaugeControl.h"
 #include "driveTelemetry.h"
 #include "PulseCounterTask.h"
+#include "HelperTasks.h" // Include HelperTasks.h for lamp control
 
 // Instantiate the HardwareSerial
 HardwareSerial GaugeSerial(1);
@@ -31,10 +32,6 @@ void gaugeControlTask(void * parameter);
 void gaugeAnimatingTask(void * parameter);
 
 void initializeGaugeControl() {
-    // initialize the GPIO pins for the lamps
-    pinMode(TEMPERATURE_Lamp_PIN, OUTPUT);
-    pinMode(SOC_Lamp_PIN, OUTPUT);
-
     // Initialize the serial communication for gauges
     GaugeSerial.begin(9600, SERIAL_8N1, GaugeRX, GaugeTX);
 
@@ -71,10 +68,6 @@ void sendStandbyCommand(bool enable) {
         Dynamometer.setPosition(Dynamometer.getMinPosition());
         Chargeometer.setPosition(Chargeometer.getMinPosition());
         Thermometer.setPosition(Thermometer.getMinPosition());
-
-        // turn off the lamps
-        digitalWrite(SOC_Lamp_PIN, LOW); // Turn off SOC lamp
-        digitalWrite(TEMPERATURE_Lamp_PIN, LOW); // Turn off temperature lamp
     }
 }
 
@@ -101,16 +94,6 @@ void gaugeControlTask(void * parameter) {
                 gaugeTemp = telemetryData.BMSMinCellTemp;
             }
             Thermometer.setPosition(gaugeTemp);
-            if (telemetryData.SoC < 20) {
-                digitalWrite(SOC_Lamp_PIN, HIGH); // Turn on SOC lamp if SoC is below 20%
-            } else {
-                digitalWrite(SOC_Lamp_PIN, LOW); // Turn off SOC lamp
-            }
-            if (gaugeTemp > 70) {
-                digitalWrite(TEMPERATURE_Lamp_PIN, HIGH); // Turn on temperature lamp if gauge temperature is above 60C
-            } else {
-                digitalWrite(TEMPERATURE_Lamp_PIN, LOW); // Turn off temperature lamp
-            }
         }
         vTaskDelay(pdMS_TO_TICKS(100));
     }

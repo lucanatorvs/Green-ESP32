@@ -8,6 +8,12 @@
 // Initialize display task
 void initializeDisplayTask();
 
+// Ignition control functions
+void setIgnitionOverride(bool enabled);
+bool getIgnitionOverride();
+void setIgnitionState(bool on);
+bool getIgnitionState();
+
 // Keep this list updated with CLI.cpp, and DisplayTask.cpp
 enum DisplayMode {
     EMPTY,

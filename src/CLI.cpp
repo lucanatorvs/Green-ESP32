@@ -20,6 +20,7 @@ const String CMD_RESET = "reset";
 const String CMD_GAUGE = "g";
 const String CMD_START_MONITOR = "canmonitor";
 const String CMD_STOP_MONITOR = "stopmonitor";
+const String CMD_IGNITION = "ignition";
 
 // Command descriptions
 const String HELP_TEXT = "Available commands:\n"
@@ -36,7 +37,8 @@ const String HELP_TEXT = "Available commands:\n"
                          "  canmonitor [id]         - Starts monitoring CAN messages. Type 'canmonitor help' for more info.\n"
                          "  stopmonitor             - Stops monitoring CAN messages.\n"
                          "  telemetry               - Displays the telemetry data.\n"
-                         "  g [gauge_name] [pos]    - Gauge command. Type 'g help' for more information.";
+                         "  g [gauge_name] [pos]    - Gauge command. Type 'g help' for more information.\n"
+                         "  ignition [subcommand]   - Control ignition. Type 'ignition help' for more information.";
 
 
 const String PARAM_HELP_TEXT = "Usage: p [index] [value] | p update [index] | p clear [index]\n"
@@ -58,6 +60,13 @@ const String GAUGE_HELP_TEXT = "Usage: g [gauge_name] [position]\n"
                                "  position: Position to set for the gauge\n"
                                "  Example: 'g Speedometer 50' sets the Speedometer to 50km/h\n";
 
+const String IGNITION_HELP_TEXT = "Usage: ignition [subcommand]\n"
+                                  "  override on        - Enable ignition override mode\n"
+                                  "  override off       - Disable ignition override mode\n"
+                                  "  on                 - Turn ignition on (when override is enabled)\n"
+                                  "  off                - Turn ignition off (when override is enabled)\n"
+                                  "  status             - Show current ignition override status\n"
+                                  "  Example: 'ignition override on' then 'ignition on/off' to test\n";
 
 void cliTask(void * parameter);
 void processCharacter(char ch, String &input, Stream &stream);
@@ -67,6 +76,7 @@ void handleSpeedCommand(Stream &stream);
 void handleInfoCommand(Stream &stream);
 void handleTripCommand(String input, Stream &stream);
 void handleGaugeCommand(String input, Stream &stream);
+void handleIgnitionCommand(String input, Stream &stream);
 void printTelemetryData(Stream &stream);
 
 void initializeCLI() {
@@ -83,11 +93,13 @@ void cliTask(void * parameter) {
             processCharacter(ch, input, Serial);
         }
         
+#ifdef ENABLE_BLUETOOTH
         // Check for input from Bluetooth Serial
         if (SerialBT.available() > 0) {
             char ch = SerialBT.read();
             processCharacter(ch, input, SerialBT);
         }
+#endif
         
         vTaskDelay(10 / portTICK_PERIOD_MS); // Wait 10ms
     }
@@ -151,6 +163,10 @@ void handleInput(String input, Stream &stream) {
         ESP.restart();
     } else if (input == "telemetry") {
         printTelemetryData(stream);
+    } else if (input.startsWith(CMD_IGNITION)) {
+        String ignitionInput = input.substring(CMD_IGNITION.length());
+        ignitionInput.trim(); // Trim the ignition input
+        handleIgnitionCommand(ignitionInput, stream);
     } else if (input == "h" || input == CMD_HELP) {
         stream.println(HELP_TEXT);
     } else if (input.startsWith(CMD_START_MONITOR)) {
@@ -257,9 +273,15 @@ void handleInfoCommand(Stream &stream) {
     stream.print("Auto Update: ");
     stream.println(getAutoUpdate() ? "ON" : "OFF");
     
+#ifdef ENABLE_BLUETOOTH
     // Bluetooth status
     stream.print("Bluetooth Connected: ");
     stream.println(isBTConnected() ? "Yes" : "No");
+#else
+    // Bluetooth status
+    stream.print("Bluetooth: ");
+    stream.println("Disabled");
+#endif
 
     // Display the state of the digital input pin digitalRead(IGNITION_SWITCH_PIN)
     stream.print("Ignition Switch State: ");
@@ -585,5 +607,47 @@ void handleGaugeCommand(String input, Stream &stream) {
         }
 
         stream.println("Gauge " + gaugeName + " set to position " + positionStr + ".");
+    }
+}
+
+void handleIgnitionCommand(String input, Stream &stream) {
+    if (input == "h" || input == "help") {
+        stream.println(IGNITION_HELP_TEXT);
+    } else if (input.startsWith("override")) {
+        String stateStr = input.substring(8);
+        stateStr.trim();
+        if (stateStr.equalsIgnoreCase("on")) {
+            setIgnitionOverride(true);
+            stream.println("Ignition override mode ENABLED. Use 'ignition on/off' to control ignition state.");
+        } else if (stateStr.equalsIgnoreCase("off")) {
+            setIgnitionOverride(false);
+            stream.println("Ignition override mode DISABLED. Normal hardware ignition control restored.");
+        } else {
+            stream.println("Error: Invalid state. Please specify 'override on' or 'override off'.");
+        }
+    } else if (input == "on") {
+        if (getIgnitionOverride()) {
+            setIgnitionState(true);
+            stream.println("Ignition turned ON (manual control)");
+        } else {
+            stream.println("Error: Ignition override mode is not enabled. Use 'ignition override on' first.");
+        }
+    } else if (input == "off") {
+        if (getIgnitionOverride()) {
+            setIgnitionState(false);
+            stream.println("Ignition turned OFF (manual control)");
+        } else {
+            stream.println("Error: Ignition override mode is not enabled. Use 'ignition override on' first.");
+        }
+    } else if (input == "status") {
+        stream.println("Ignition Override: " + String(getIgnitionOverride() ? "ENABLED" : "DISABLED"));
+        if (getIgnitionOverride()) {
+            stream.println("Manual Ignition State: " + String(getIgnitionState() ? "ON" : "OFF"));
+        }
+        // Also show the actual hardware state
+        stream.print("Hardware Ignition Pin State (analog): ");
+        stream.println(analogRead(IGNITION_SWITCH_PIN));
+    } else {
+        stream.println("Error: Invalid ignition command. Type 'ignition help' for usage information.");
     }
 }

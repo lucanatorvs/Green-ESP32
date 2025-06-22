@@ -6,6 +6,7 @@
 #include "DisplayTask.h"
 #include "GaugeControl.h"
 #include "Bluetooth.h" // Include Bluetooth.h to get access to SerialBT
+#include "HelperTasks.h" // Include HelperTasks.h for lamp control
 
 Telemetry telemetryData;
 bool monitorCAN = false;
@@ -38,10 +39,6 @@ Timer motorTimer(500, onMotorOff); // 500 milliseconds timeout
 Timer readyTimer(5000, onReadyOff); // 5000 milliseconds timeout
 
 void initializeCANListenerTask() {
-
-    // Initialize the running lamp pin
-    pinMode(RUNNIG_Lamp_PIN, OUTPUT);
-
     // Initialize the CAN controller at 250 kbps
     if(ESP32Can.begin(ESP32Can.convertSpeed(250), CAN_TX_PIN, CAN_RX_PIN, 10, 10)) {
         Serial.println("CAN bus started!");
@@ -61,9 +58,11 @@ void CanListenerTask(void * parameter) {
         if(ESP32Can.readFrame(rxFrame, 1)) {
             if (monitorCAN && (filterCANID == 0 || rxFrame.identifier == filterCANID)) {
                 LogCanMessage(Serial);  // Log to hardware Serial
+#ifdef ENABLE_BLUETOOTH
                 if (isBTConnected()) {  // If Bluetooth is connected, also log there
                     LogCanMessage(SerialBT);
                 }
+#endif
             }
             HandleCanMessage();
         }
@@ -95,11 +94,13 @@ int CANMonitoring() {
 void onMotorOff() {
     // Implement what happens when the motor is considered "off"
     Serial.println("Motor is off");
+#ifdef ENABLE_BLUETOOTH
     if (isBTConnected()) {
         SerialBT.println("Motor is off");
     }
+#endif
 
-    digitalWrite(RUNNIG_Lamp_PIN, LOW); // Turn off the running lamp
+    setRunningLamp(false); // Turn off the running lamp using the helper function
     
     // if the mode is ready, change it to empty, otherwise, do nothing
     if (currentDisplayMode == READY) {
@@ -112,11 +113,13 @@ void onMotorOff() {
 void onMotorON() {
     // Implement what happens when the motor is considered "on"
     Serial.println("Motor is on");
+#ifdef ENABLE_BLUETOOTH
     if (isBTConnected()) {
         SerialBT.println("Motor is on");
     }
+#endif
 
-    digitalWrite(RUNNIG_Lamp_PIN, HIGH); // Turn on the running lamp
+    setRunningLamp(true); // Turn on the running lamp using the helper function
     
     currentDisplayMode = READY;
     readyTimer.start(); // Start the ready timer

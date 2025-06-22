@@ -14,16 +14,37 @@
 
 U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI display(U8G2_R0, DISPLAY_CHIP_SELECT_PIN, DISPLAY_DATA_COMMAND_PIN, DISPLAY_RESET_PIN);
 
+// Ignition control variables
+bool ignitionOverrideEnabled = false;
+bool manualIgnitionState = false;
+
 void displayTask(void * parameter);
 void displayModeSwichTask(void * parameter);
 void turnOnTask(void * parameter);
 void drawOdometer();
 
+// Ignition override control functions
+void setIgnitionOverride(bool enabled) {
+    ignitionOverrideEnabled = enabled;
+    Serial.println(enabled ? "Ignition override ENABLED" : "Ignition override DISABLED");
+}
+
+bool getIgnitionOverride() {
+    return ignitionOverrideEnabled;
+}
+
+void setIgnitionState(bool on) {
+    manualIgnitionState = on;
+    // The actual state change is handled in the turnOnTask
+}
+
+bool getIgnitionState() {
+    return manualIgnitionState;
+}
+
 DisplayMode currentDisplayMode = EMPTY; // Global variable to keep track of the current display mode
 
 void initializeDisplayTask() {
-    pinMode(BATTERY_Lamp_PIN, OUTPUT);
-
     if (xSemaphoreTake(spiBusMutex, portMAX_DELAY)) {
         display.begin();
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -46,16 +67,29 @@ void turnOnTask(void * parameter) {
     const int ANALOG_THRESHOLD = 500; // Using 500 as a starting threshold (0-4095 range)
     
     for (;;) {
-        // Read the analog value of the pin
-        int analogValue = analogRead(IGNITION_SWITCH_PIN);
-        
-        // Use the analog value with a threshold to determine state
-        if (currentDisplayMode == OFF && analogValue > ANALOG_THRESHOLD) {
-            currentDisplayMode = EMPTY;
-            sendStandbyCommand(true);
-        } else if (analogValue <= ANALOG_THRESHOLD && currentDisplayMode != OFF) {
-            currentDisplayMode = OFF;
-            sendStandbyCommand(false);
+        if (ignitionOverrideEnabled) {
+            // Use manual ignition state instead of reading the pin
+            if (manualIgnitionState && currentDisplayMode == OFF) {
+                currentDisplayMode = EMPTY;
+                sendStandbyCommand(true);
+                Serial.println("Manual ignition ON");
+            } else if (!manualIgnitionState && currentDisplayMode != OFF) {
+                currentDisplayMode = OFF;
+                sendStandbyCommand(false);
+                Serial.println("Manual ignition OFF");
+            }
+        } else {
+            // Normal operation - read the analog value of the pin
+            int analogValue = analogRead(IGNITION_SWITCH_PIN);
+            
+            // Use the analog value with a threshold to determine state
+            if (currentDisplayMode == OFF && analogValue > ANALOG_THRESHOLD) {
+                currentDisplayMode = EMPTY;
+                sendStandbyCommand(true);
+            } else if (analogValue <= ANALOG_THRESHOLD && currentDisplayMode != OFF) {
+                currentDisplayMode = OFF;
+                sendStandbyCommand(false);
+            }
         }
         vTaskDelay(pdMS_TO_TICKS(200));
     }
@@ -109,16 +143,36 @@ void displayTask(void * parameter) {
                     {
                         display.setFont(u8g2_font_6x12_tf);
                         // draw Range
-                        // Format BMSEstimatedDistanceLeft (in 0.01 km units) as "xxx.xx"
-                        char rangeBuffer[16];
-                        int rangeInt = telemetryData.BMSEstimatedDistanceLeft / 100;
-                        display.drawStr(X1 + 3, Y1 + 20, "Range: ");
-                        display.drawStr(X1 + 3 + display.getStrWidth("Range: "), Y1 + 20, String(rangeInt).c_str());
-                        display.drawStr(X1 + 3 + display.getStrWidth("Range: ") + display.getStrWidth(rangeBuffer) + 4, Y1 + 20, "km");
+                        // Use telemetryData.Charge (0.1Ah left in batt) and telemetryData.BMSConsumptionEstimate (Wh/km) to calculate range
+                        int rangeInt = 0;
+                        if (telemetryData.BMSConsumptionEstimate != 0xFFFF && telemetryData.BMSConsumptionEstimate != 0) {
+                            // Calculate range in km
+                            rangeInt = (telemetryData.Charge * 100) / telemetryData.BMSConsumptionEstimate; // Charge is in 0.1Ah, Consumption is in Wh/km
+                        }
+                        if (rangeInt > 999) {
+                            rangeInt = 1000; // Cap the range at 9999 km
+                        } else if (rangeInt < 0) {
+                            rangeInt = 0; // If the range is negative, set it to 0
+                        }
+                        // Draw the range in the top left corner
+                        if (rangeInt !== 1000) {
+                            display.drawStr(X1 + 3, Y1 + 20, "Range: ");
+                            display.drawStr(X1 + 3 + display.getStrWidth("Range: "), Y1 + 20, String(rangeInt).c_str());
+                            display.drawStr(X1 + 3 + display.getStrWidth("Range: ") + display.getStrWidth(String(rangeInt).c_str()) + 4, Y1 + 20, "km");
+                        } else {
+                            // rainge is 1000, so we draw a infinity sign
+                            display.drawStr(X1 + 3, Y1 + 20, "Range: ");
+                            display.drawStr(X1 + 3 + display.getStrWidth("Range: "), Y1 + 20, "∞");
+                            display.drawStr(X1 + 3 + display.getStrWidth("Range: ") + display.getStrWidth("∞") + 4, Y1 + 20, "km");
+                        }
                         // next line is Usage
+                        int usageInt = telemetryData.BMSConsumptionEstimate; // Convert to Wh/km
+                        if (usageInt == 0xFFFF) {
+                            usageInt = 0; // If the value is 0xFFFF, set usage to 0
+                        }
                         display.drawStr(X1 + 3, Y1 + 32, "Usage: ");
-                        display.drawStr(X1 + 3 + display.getStrWidth("Usage: "), Y1 + 32, String(telemetryData.BMSConsumptionEstimate).c_str());
-                        display.drawStr(X1 + 3 + display.getStrWidth("Usage: ") + display.getStrWidth(String(telemetryData.BMSConsumptionEstimate).c_str()) + 4, Y1 + 32, "Wh/km");
+                        display.drawStr(X1 + 3 + display.getStrWidth("Usage: "), Y1 + 32, String(usageInt).c_str());
+                        display.drawStr(X1 + 3 + display.getStrWidth("Usage: ") + display.getStrWidth(String(usageInt).c_str()) + 4, Y1 + 32, "Wh/km");
                         break;
                     }
                     case SOC:
@@ -163,11 +217,6 @@ void displayTask(void * parameter) {
             }
             xSemaphoreGive(spiBusMutex);
             vTaskDelay(pdMS_TO_TICKS(100));
-        }
-        if (telemetryData.BMSChargingState != 0) {
-            digitalWrite(BATTERY_Lamp_PIN, HIGH); // Turn on the battery lamp if charging
-        } else {
-            digitalWrite(BATTERY_Lamp_PIN, LOW); // Turn off the battery lamp if not charging
         }
     }
 }
