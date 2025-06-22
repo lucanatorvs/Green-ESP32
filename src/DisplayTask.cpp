@@ -23,6 +23,47 @@ void displayModeSwichTask(void * parameter);
 void turnOnTask(void * parameter);
 void drawOdometer();
 
+// Helper function to calculate range and consumption
+void calculateConsumptionAndRange(int &rangeInt, int &usageInt, char &usageSign) {
+    // If BMSConsumptionEstimate is valid, use it
+    if (telemetryData.BMSConsumptionEstimate != 0xFFFF && telemetryData.BMSConsumptionEstimate != 0) {
+        usageInt = telemetryData.BMSConsumptionEstimate;
+        if (usageInt < 0) usageInt = 0;
+        rangeInt = (telemetryData.Charge * 10) / usageInt;
+        usageSign = '-'; // Assume BMSConsumptionEstimate is for discharge
+    } else {
+        // Calculate from voltage, current, speed
+        float voltage = telemetryData.DCVoltage;
+        float current = telemetryData.DCCurrent;
+        float speed = telemetryData.speed;
+        usageInt = 0;
+        rangeInt = 0;
+        if (speed > 1.0) {
+            float power = voltage * current; // Watts
+            float consumption = fabs(power / speed); // Wh/km, always positive
+            usageInt = (int)consumption;
+            if (usageInt < 1) usageInt = 1; // Avoid div by zero
+            float chargeAh = telemetryData.Charge / 10.0f;
+            float range = (chargeAh * voltage) / consumption;
+            rangeInt = (int)range;
+            if (current > 0.0) {
+                usageSign = '-'; // Discharging
+            } else {
+                usageSign = '+'; // Regenerating
+            }
+        } else if (current <= 0.0) {
+            // Regenerating or not consuming, cap range
+            rangeInt = 999;
+            usageInt = 0;
+            usageSign = '+';
+        } else {
+            usageSign = '-';
+        }
+    }
+    if (rangeInt > 999) rangeInt = 999;
+    if (rangeInt < 0) rangeInt = 0;
+}
+
 // Ignition override control functions
 void setIgnitionOverride(bool enabled) {
     ignitionOverrideEnabled = enabled;
@@ -125,13 +166,8 @@ void displayTask(void * parameter) {
                 // small delay to allow display to power up
                 vTaskDelay(pdMS_TO_TICKS(50));
 
-                // display.setPowerSave(0); // Turn on the display
-                // small delay to allow display to power up
-                // vTaskDelay(pdMS_TO_TICKS(50));
-
                 display.enableUTF8Print();
                 display.clearBuffer();
-                // display.drawFrame(X1 - 1, Y1 - 1, X2 - X1 + 1, Y2 - Y1 + 1);
                 drawOdometer();
 
                 // Draw content based on the current display mode
@@ -142,37 +178,18 @@ void displayTask(void * parameter) {
                     case START:
                     {
                         display.setFont(u8g2_font_6x12_tf);
-                        // draw Range
-                        // Use telemetryData.Charge (0.1Ah left in batt) and telemetryData.BMSConsumptionEstimate (Wh/km) to calculate range
-                        int rangeInt = 0;
-                        if (telemetryData.BMSConsumptionEstimate != 0xFFFF && telemetryData.BMSConsumptionEstimate != 0) {
-                            // Calculate range in km
-                            rangeInt = (telemetryData.Charge * 100) / telemetryData.BMSConsumptionEstimate; // Charge is in 0.1Ah, Consumption is in Wh/km
-                        }
-                        if (rangeInt > 999) {
-                            rangeInt = 1000; // Cap the range at 9999 km
-                        } else if (rangeInt < 0) {
-                            rangeInt = 0; // If the range is negative, set it to 0
-                        }
-                        // Draw the range in the top left corner
-                        if (rangeInt !== 1000) {
-                            display.drawStr(X1 + 3, Y1 + 20, "Range: ");
-                            display.drawStr(X1 + 3 + display.getStrWidth("Range: "), Y1 + 20, String(rangeInt).c_str());
-                            display.drawStr(X1 + 3 + display.getStrWidth("Range: ") + display.getStrWidth(String(rangeInt).c_str()) + 4, Y1 + 20, "km");
-                        } else {
-                            // rainge is 1000, so we draw a infinity sign
-                            display.drawStr(X1 + 3, Y1 + 20, "Range: ");
-                            display.drawStr(X1 + 3 + display.getStrWidth("Range: "), Y1 + 20, "∞");
-                            display.drawStr(X1 + 3 + display.getStrWidth("Range: ") + display.getStrWidth("∞") + 4, Y1 + 20, "km");
-                        }
-                        // next line is Usage
-                        int usageInt = telemetryData.BMSConsumptionEstimate; // Convert to Wh/km
-                        if (usageInt == 0xFFFF) {
-                            usageInt = 0; // If the value is 0xFFFF, set usage to 0
-                        }
+                        int rangeInt = 0, usageInt = 0;
+                        char usageSign = '-';
+                        calculateConsumptionAndRange(rangeInt, usageInt, usageSign);
+                        display.drawStr(X1 + 3, Y1 + 20, "Range: ");
+                        display.drawStr(X1 + 3 + display.getStrWidth("Range: "), Y1 + 20, String(rangeInt).c_str());
+                        display.drawStr(X1 + 3 + display.getStrWidth("Range: ") + display.getStrWidth(String(rangeInt).c_str()) + 4, Y1 + 20, "km");
                         display.drawStr(X1 + 3, Y1 + 32, "Usage: ");
-                        display.drawStr(X1 + 3 + display.getStrWidth("Usage: "), Y1 + 32, String(usageInt).c_str());
-                        display.drawStr(X1 + 3 + display.getStrWidth("Usage: ") + display.getStrWidth(String(usageInt).c_str()) + 4, Y1 + 32, "Wh/km");
+                        int usageX = X1 + 3 + display.getStrWidth("Usage: ");
+                        char usageBuffer[16];
+                        snprintf(usageBuffer, sizeof(usageBuffer), "%c %d", usageSign, usageInt);
+                        display.drawStr(usageX, Y1 + 32, usageBuffer);
+                        display.drawStr(usageX + display.getStrWidth(usageBuffer) + 4, Y1 + 32, "Wh/km");
                         break;
                     }
                     case SOC:
