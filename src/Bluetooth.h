@@ -5,13 +5,12 @@
 
 // Define to enable/disable Bluetooth functionality
 // Comment out this line to disable Bluetooth
-// #define ENABLE_BLUETOOTH
+#define ENABLE_BLUETOOTH
 
 #ifdef ENABLE_BLUETOOTH
   #include "BluetoothSerial.h"
   #include "esp_bt.h"
   #include "esp_bt_main.h"
-  #include "esp_bluedroid_api.h"
 
   // Initialize Bluetooth
   void initializeBluetooth();
