@@ -8,8 +8,8 @@ HardwareSerial GaugeSerial(1);
 
 // Define the ranges for each gauge
 // minValue, maxValue, minAngle, maxAngle
-GaugeRange SpeedometerRange     (0, 200, 105, 344);
-GaugeRange TachometerRange      (0, 9000, 92, 335);
+GaugeRange SpeedometerRange     (0, 200, 106, 353);
+GaugeRange TachometerRange      (0, 9000, 96, 340);
 GaugeRange DynamometerRange     (-60, 90, 107, 235);
 GaugeRange ChargeometerRange    (0, 100, 99, 191);
 GaugeRange ThermometerRange     (-20, 100, 99, 194);

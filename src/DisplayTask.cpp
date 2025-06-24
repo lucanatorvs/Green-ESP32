@@ -187,7 +187,7 @@ void displayTask(void * parameter) {
                         display.drawStr(X1 + 3, Y1 + 32, "Usage: ");
                         int usageX = X1 + 3 + display.getStrWidth("Usage: ");
                         char usageBuffer[16];
-                        snprintf(usageBuffer, sizeof(usageBuffer), "%c %d", usageSign, usageInt);
+                        snprintf(usageBuffer, sizeof(usageBuffer), "%c%d", usageSign, usageInt);
                         display.drawStr(usageX, Y1 + 32, usageBuffer);
                         display.drawStr(usageX + display.getStrWidth(usageBuffer) + 4, Y1 + 32, "Wh/km");
                         break;
