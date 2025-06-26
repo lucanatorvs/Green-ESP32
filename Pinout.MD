@@ -9,7 +9,7 @@
 | 2 - Can High        | 2 - Can High   |       |
 | 3 - Door Switch     | 3 - Door Switch|       |
 | 4 - Ground          | 4 - Ground     |       |
-| 5 - Ignition        | 5 - Ignition   |       |
+| 5 - Brake LT        | 5 - Brake LT   |       |
 | 6 - Buzzer          | 6 - Buzzer     |       |
 
 

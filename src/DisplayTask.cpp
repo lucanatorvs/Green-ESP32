@@ -6,6 +6,7 @@
 #include "driveTelemetry.h"
 #include "GaugeControl.h"
 #include "Bluetooth.h"
+#include "HelperTasks.h"
 
 #define X1 4    // x coordinate of the top left corner of the odometer
 #define Y1 12   // y coordinate of the top left corner of the odometer
@@ -24,42 +25,46 @@ void turnOnTask(void * parameter);
 void drawOdometer();
 
 // Helper function to calculate range and consumption
-void calculateConsumptionAndRange(int &rangeInt, int &usageInt, char &usageSign) {
+void calculateConsumptionAndRange(int &rangeInt, int &usageInt) {
     // If BMSConsumptionEstimate is valid, use it
     if (telemetryData.BMSConsumptionEstimate != 0xFFFF && telemetryData.BMSConsumptionEstimate != 0) {
         usageInt = telemetryData.BMSConsumptionEstimate;
         if (usageInt < 0) usageInt = 0;
         rangeInt = (telemetryData.Charge * 10) / usageInt;
-        usageSign = '-'; // Assume BMSConsumptionEstimate is for discharge
     } else {
-        // Calculate from voltage, current, speed
-        float voltage = telemetryData.DCVoltage;
-        float current = telemetryData.DCCurrent;
-        float speed = telemetryData.speed;
-        usageInt = 0;
-        rangeInt = 0;
-        if (speed > 1.0) {
-            float power = voltage * current; // Watts
-            float consumption = fabs(power / speed); // Wh/km, always positive
-            usageInt = (int)consumption;
-            if (usageInt < 1) usageInt = 1; // Avoid div by zero
-            float chargeAh = telemetryData.Charge / 10.0f;
-            float range = (chargeAh * voltage) / consumption;
-            rangeInt = (int)range;
-            if (current > 0.0) {
-                usageSign = '-'; // Discharging
-            } else {
-                usageSign = '+'; // Regenerating
+        // Use smoothed values for more stable display
+        usageInt = (int)getSmoothedConsumption();
+        rangeInt = getSmoothedRange();
+        
+        // Fallback if smoothed values are not available yet
+        if (usageInt == 0 && rangeInt == 0) {
+            float voltage = telemetryData.DCVoltage;
+            float current = telemetryData.DCCurrent;
+            float speed = telemetryData.speed;
+            
+            if (speed > 1.0) {
+                float power = voltage * current; // Watts
+                float consumption = fabs(power / speed); // Wh/km, always positive
+                usageInt = (int)consumption;
+                if (usageInt < 1) usageInt = 1; // Avoid div by zero
+                
+                // Set range based on regeneration status
+                if (current <= 0.0) { // Regenerating
+                    rangeInt = 999;
+                } else { // Discharging
+                    float chargeAh = telemetryData.Charge / 10.0f;
+                    float range = (chargeAh * voltage) / consumption;
+                    rangeInt = (int)range;
+                }
+            } else if (current <= 0.0) {
+                // Regenerating or not consuming, cap range
+                rangeInt = 999;
+                usageInt = 0;
             }
-        } else if (current <= 0.0) {
-            // Regenerating or not consuming, cap range
-            rangeInt = 999;
-            usageInt = 0;
-            usageSign = '+';
-        } else {
-            usageSign = '-';
         }
     }
+    
+    // Cap range values
     if (rangeInt > 999) rangeInt = 999;
     if (rangeInt < 0) rangeInt = 0;
 }
@@ -179,17 +184,20 @@ void displayTask(void * parameter) {
                     {
                         display.setFont(u8g2_font_6x12_tf);
                         int rangeInt = 0, usageInt = 0;
-                        char usageSign = '-';
-                        calculateConsumptionAndRange(rangeInt, usageInt, usageSign);
+                        calculateConsumptionAndRange(rangeInt, usageInt);
                         display.drawStr(X1 + 3, Y1 + 20, "Range: ");
                         display.drawStr(X1 + 3 + display.getStrWidth("Range: "), Y1 + 20, String(rangeInt).c_str());
                         display.drawStr(X1 + 3 + display.getStrWidth("Range: ") + display.getStrWidth(String(rangeInt).c_str()) + 4, Y1 + 20, "km");
-                        display.drawStr(X1 + 3, Y1 + 32, "Usage: ");
-                        int usageX = X1 + 3 + display.getStrWidth("Usage: ");
-                        char usageBuffer[16];
-                        snprintf(usageBuffer, sizeof(usageBuffer), "%c%d", usageSign, usageInt);
-                        display.drawStr(usageX, Y1 + 32, usageBuffer);
-                        display.drawStr(usageX + display.getStrWidth(usageBuffer) + 4, Y1 + 32, "Wh/km");
+                        
+                        // Change label from "Usage" to "Regen" when regenerating
+                        bool isRegen = isRegeneratingPower();
+                        const char* label = isRegen ? "Regen: " : "Usage: ";
+                        display.drawStr(X1 + 3, Y1 + 32, label);
+                        int usageX = X1 + 3 + display.getStrWidth(label);
+                        
+                        // Just display the value without a sign
+                        display.drawStr(usageX, Y1 + 32, String(usageInt).c_str());
+                        display.drawStr(usageX + display.getStrWidth(String(usageInt).c_str()) + 4, Y1 + 32, "Wh/km");
                         break;
                     }
                     case SOC:
